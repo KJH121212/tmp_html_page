@@ -50,7 +50,7 @@ def build():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRPG 핸드아웃 허브</title>
+  <title>tmp 핸드아웃 허브</title>
   <style>
     body {{ background: #121314; color: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 1.5rem; margin: 0; }}
     .container {{ max-width: 960px; margin: 0 auto; }}
