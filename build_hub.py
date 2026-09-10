@@ -70,7 +70,7 @@ def build():
 <body>
   <div class="container">
     <header>
-      <h1>🎲 TRPG 인터랙티브 허브</h1>
+      <h1>tmp 인터랙티브 허브</h1>
       <span style="color: #8b949e; font-size: 0.85rem;">총 {total_count}개 파일</span>
     </header>
     <div class="grid">

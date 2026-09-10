@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YOLO Training Performance Dashboard</title>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-dark: #0B0F19;
+    --bg-card: #131C2E;
+    --bg-card-hover: #18233A;
+    --border-color: #22314E;
+    --border-highlight: #38BDF8;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+    
+    --c-cyan: #38BDF8;
+    --c-green: #10B981;
+    --c-amber: #F59E0B;
+    --c-purple: #A855F7;
+    --c-rose: #F43F5E;
+    --c-yellow: #FBBF24;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    padding: 24px 32px;
+  }
+
+  .dashboard-container {
+    max-width: 1750px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* 헤더 */
+  .header-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 18px 28px;
+  }
+
+  .header-left h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-left p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-status {
+    font-size: 11px;
+    color: var(--c-cyan);
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+  }
+
+  .upload-btn {
+    background: #1E293B;
+    color: #FFFFFF;
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .upload-btn:hover {
+    background: #334155;
+    border-color: var(--c-cyan);
+  }
+
+  /* KPI 카드 그리드 */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--kpi-color);
+  }
+
+  .kpi-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--kpi-color);
+    margin: 4px 0;
+  }
+
+  .kpi-sub {
+    font-size: 11.5px;
+    color: #CBD5E1;
+  }
+
+  /* 차트 섹션 헤더 */
+  .section-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    margin-bottom: -6px;
+    padding: 0 4px;
+  }
+
+  .section-toolbar h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-hint {
+    font-size: 11.5px;
+    color: var(--c-cyan);
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px dashed rgba(56, 189, 248, 0.3);
+    padding: 5px 12px;
+    border-radius: 6px;
+  }
+
+  /* 차트 그리드 */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    height: 340px;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .chart-card:hover {
+    border-color: #334155;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .chart-title-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+
+  .badge {
+    font-size: 9px;
+    color: var(--text-muted);
+    background: #0B0F19;
+    padding: 2px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+  }
+
+  .expand-btn {
+    background: #1E293B;
+    border: 1px solid var(--border-color);
+    color: var(--c-cyan);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+
+  .expand-btn:hover {
+    background: var(--c-cyan);
+    color: #0B0F19;
+    border-color: var(--c-cyan);
+  }
+
+  .chart-wrapper {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .chart-caption {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.35;
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .chart-caption-icon {
+    color: var(--c-cyan);
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  /* 원본 데이터 테이블 */
+  .table-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px 22px;
+  }
+
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .table-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+
+  .table-container {
+    margin-top: 14px;
+    max-height: 320px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .table-container.open { display: block; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    text-align: right;
+  }
+
+  th, td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  th {
+    background: #0B0F19;
+    color: var(--text-muted);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+
+  tr:hover td { background: rgba(255, 255, 255, 0.02); }
+  td:first-child, th:first-child { text-align: center; }
+
+  #fileInput { display: none; }
+
+  /* ============================================================= */
+  /* [모달] 특정 그래프 크게 보기 & 상세 해설 패널                  */
+  /* ============================================================= */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(4, 7, 15, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-content {
+    background: #111728;
+    border: 1px solid #2B3A5A;
+    border-radius: 18px;
+    width: 92vw;
+    max-width: 1450px;
+    height: 88vh;
+    max-height: 920px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85), 0 0 40px rgba(56, 189, 248, 0.15);
+    overflow: hidden;
+    transform: scale(0.96);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal-overlay.active .modal-content {
+    transform: scale(1);
+  }
+
+  .modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background: #131C2E;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-title-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #FFFFFF;
+  }
+
+  .modal-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: var(--c-cyan);
+  }
+
+  .modal-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-nav-btn {
+    background: #1E293B;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+
+  .modal-nav-btn:hover {
+    background: #334155;
+    border-color: var(--c-cyan);
+    color: var(--c-cyan);
+  }
+
+  .modal-close-btn {
+    background: rgba(244, 63, 94, 0.15);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: var(--c-rose);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-left: 6px;
+  }
+
+  .modal-close-btn:hover {
+    background: var(--c-rose);
+    color: #FFFFFF;
+  }
+
+  .modal-stats-bar {
+    padding: 10px 24px;
+    background: #0E1524;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+  }
+
+  .stat-pill strong {
+    color: #FFFFFF;
+  }
+
+  /* 지표 의미 / 해석 기준 2단 패널 (학습 분석 제거) */
+  .modal-desc-panel {
+    background: rgba(19, 28, 46, 0.6);
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .desc-box {
+    background: #0C1220;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .desc-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--c-cyan);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .desc-label.criteria { color: var(--c-amber); }
+
+  .desc-text {
+    font-size: 11.5px;
+    color: #CBD5E1;
+    line-height: 1.45;
+  }
+
+  .modal-body {
+    flex: 1;
+    padding: 18px 24px 22px;
+    position: relative;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .modal-chart-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-container">
+  <!-- 1. 헤더 -->
+  <header class="header-panel">
+    <div class="header-left">
+      <h1>📊 YOLO Model Training Performance Dashboard</h1>
+      <p id="meta-text">데이터 로딩 중...</p>
+    </div>
+    <div class="header-actions">
+      <span class="file-status" id="fileStatus">Loading ./results.csv</span>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 CSV 파일 직접 선택</button>
+      <input type="file" id="fileInput" accept=".csv" onchange="handleFileSelect(event)">
+    </div>
+  </header>
+
+  <!-- 2. KPI 카드 -->
+  <section class="kpi-grid">
+    <div class="kpi-card" style="--kpi-color: var(--c-cyan);">
+      <div class="kpi-title">Best mAP@0.5:0.95</div>
+      <div class="kpi-value" id="kpi-map5095">-</div>
+      <div class="kpi-sub" id="kpi-map5095-sub">-</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--c-green);">
+      <div class="kpi-title">Best mAP@0.5</div>
+      <div class="kpi-value" id="kpi-map50">-</div>
+      <div class="kpi-sub" id="kpi-map50-sub">-</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--c-amber);">
+      <div class="kpi-title">Best Precision (B)</div>
+      <div class="kpi-value" id="kpi-prec">-</div>
+      <div class="kpi-sub" id="kpi-prec-sub">-</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--c-purple);">
+      <div class="kpi-title">Best Recall (B)</div>
+      <div class="kpi-value" id="kpi-rec">-</div>
+      <div class="kpi-sub" id="kpi-rec-sub">-</div>
+    </div>
+  </section>
+
+  <!-- 툴바 안내 -->
+  <div class="section-toolbar">
+    <h2>📈 Training & Validation Metrics</h2>
+    <span class="toolbar-hint">💡 각 그래프 우측 상단의 <b>[⛶ 크게 보기]</b> 버튼을 누르면 전체화면 상세 해설 모달이 열립니다</span>
+  </div>
+
+  <!-- 3. 차트 행 1: 손실 함수 (Losses) & LR -->
+  <section class="chart-grid">
+    <!-- 1. Box Loss -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">Box Loss</div>
+          <span class="badge">Train vs Val</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('box-loss')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-box-loss"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">🎯</span>
+        <span>바운딩 박스 위치·크기 오차. 낮을수록 인체 위치를 흔들림 없이 타이트하게 추적합니다.</span>
+      </div>
+    </div>
+
+    <!-- 2. Class Loss -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">Class Loss</div>
+          <span class="badge">Train vs Val</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('cls-loss')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-cls-loss"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">🏷️</span>
+        <span>사람 여부를 판별하는 오분류 손실. 낮을수록 배경이나 운동기구를 사람으로 오탐하지 않습니다.</span>
+      </div>
+    </div>
+
+    <!-- 3. DFL Loss -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">DFL Loss</div>
+          <span class="badge">Train vs Val</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('dfl-loss')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-dfl-loss"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">📐</span>
+        <span>박스 모서리 분포 손실. 낮을수록 팔·다리 등 신체 외곽 경계선이 뭉개지지 않고 정확히 잡힙니다.</span>
+      </div>
+    </div>
+
+    <!-- 4. LR -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">Learning Rate</div>
+          <span class="badge">Optimizer</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('lr')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-lr"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">⚡</span>
+        <span>가중치 최적화 보폭. 초반 웜업 후 점진적 코사인 감쇄로 안정적인 극소점 수렴을 유도합니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 차트 행 2: 평가 지표 (Metrics) -->
+  <section class="chart-grid">
+    <!-- 5. Precision -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">Precision (B)</div>
+          <span class="badge">Detection</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('precision')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-precision"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">🔍</span>
+        <span>사람으로 감지한 것 중 진짜 사람인 비율. 1.0에 가까울수록 엉뚱한 배경을 사람으로 잡는 헛것이 없습니다.</span>
+      </div>
+    </div>
+
+    <!-- 6. Recall -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">Recall (B)</div>
+          <span class="badge">Detection</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('recall')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-recall"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">📡</span>
+        <span>화면 속 실제 사람을 놓치지 않고 찾아낸 비율. 높을수록 빠른 움직임에도 인체 감지가 끊기지 않습니다.</span>
+      </div>
+    </div>
+
+    <!-- 7. mAP@0.5 -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">mAP@0.5 (B)</div>
+          <span class="badge">IoU 0.50</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('map50')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-map50"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">⭐</span>
+        <span>IoU 50% 기준 평균 정밀도. 80% 이상이면 실시간 모션 트래킹용으로 매우 우수한 수준입니다.</span>
+      </div>
+    </div>
+
+    <!-- 8. mAP@0.5:0.95 -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-left">
+          <div class="chart-title">mAP@0.5:0.95 (B)</div>
+          <span class="badge">Primary Metric</span>
+        </div>
+        <button class="expand-btn" onclick="openChartModal('map5095')">⛶ 크게 보기</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="chart-map5095"></canvas></div>
+      <div class="chart-caption">
+        <span class="chart-caption-icon">🏆</span>
+        <span>IoU 50%~95% 종합 대표 벤치마크. 높을수록 신체 크롭 영역이 오차 없이 완벽히 맞아떨어집니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 원본 데이터 테이블 -->
+  <section class="table-card">
+    <div class="table-header" onclick="toggleTable()">
+      <h3>📋 Epoch-by-Epoch Raw Data Table</h3>
+      <span style="font-size: 12px; color: var(--text-muted);" id="table-toggle-btn">클릭하여 펼치기 ▼</span>
+    </div>
+    <div class="table-container" id="tableContainer">
+      <table id="dataTable">
+        <thead>
+          <tr id="tableHead"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================= -->
+<!-- [모달 팝업] 특정 그래프 대형 확대 뷰 & 상세 설명 패널          -->
+<!-- ============================================================= -->
+<div class="modal-overlay" id="chartModal" onclick="handleModalBackdropClick(event)">
+  <div class="modal-content">
+    <!-- 모달 헤더 -->
+    <div class="modal-header">
+      <div class="modal-title-area">
+        <h2 class="modal-title" id="modalChartTitle">Chart Name</h2>
+        <span class="modal-badge" id="modalChartBadge">Category</span>
+      </div>
+      <div class="modal-controls">
+        <button class="modal-nav-btn" onclick="navigateModalChart(-1)">◀ 이전 그래프</button>
+        <button class="modal-nav-btn" onclick="navigateModalChart(1)">다음 그래프 ▶</button>
+        <button class="modal-close-btn" onclick="closeChartModal()" title="닫기 (Esc)">✕</button>
+      </div>
+    </div>
+    
+    <!-- 실시간 통계 칩스 바 -->
+    <div class="modal-stats-bar" id="modalStatsBar"></div>
+
+    <!-- 지표 의미 / 해석 기준 2단 해설 박스 (모델 학습 분석 제거 완료) -->
+    <div class="modal-desc-panel" id="modalDescPanel">
+      <div class="desc-box">
+        <div class="desc-label">📌 지표 의미</div>
+        <div class="desc-text" id="descMeaning">-</div>
+      </div>
+      <div class="desc-box">
+        <div class="desc-label criteria">🔍 해석 기준</div>
+        <div class="desc-text" id="descCriteria">-</div>
+      </div>
+    </div>
+
+    <!-- 대형 캔버스 차트 -->
+    <div class="modal-body">
+      <div class="modal-chart-wrapper">
+        <canvas id="modalChartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 최초 기본 렌더용 Fallback CSV -->
+<script type="text/plain" id="fallback-csv">
+epoch,time,train/box_loss,train/cls_loss,train/dfl_loss,metrics/precision(B),metrics/recall(B),metrics/mAP50(B),metrics/mAP50-95(B),val/box_loss,val/cls_loss,val/dfl_loss,lr/pg0,lr/pg1,lr/pg2,lr/pg3,lr/pg4,lr/pg5,lr/pg6,lr/pg7
+1,314.352,1.17911,1.1895,1.23647,0.77543,0.67002,0.75236,0.48296,1.16007,0.86512,1.31825,0.00998917,0.00332972,0.00998917,0.00332972,0.00998917,0.00332972,0.00998917,0.00332972
+2,597.708,1.21134,1.02919,1.25671,0.77763,0.64804,0.74067,0.46898,1.1707,0.90779,1.28727,0.0195934,0.00653113,0.0195934,0.00653113,0.0195934,0.00653113,0.0195934,0.00653113
+3,882.046,1.29037,1.11588,1.31722,0.74519,0.59709,0.67029,0.40562,1.28244,1.03584,1.40436,0.0288016,0.00960053,0.0288016,0.00960053,0.0288016,0.00960053,0.0288016,0.00960053
+4,1165.8,1.287,1.11332,1.32289,0.79809,0.63671,0.73464,0.47148,1.15292,0.90095,1.29194,0.028218,0.009406,0.028218,0.009406,0.028218,0.009406,0.028218,0.009406
+5,1449.46,1.2368,1.05578,1.291,0.81579,0.68158,0.78049,0.51872,1.06955,0.78722,1.22971,0.027624,0.009208,0.027624,0.009208,0.027624,0.009208,0.027624,0.009208
+</script>
+
+<script>
+  let chartInstances = {};
+  let modalChartInstance = null;
+  let parsedDataset = null;
+  let currentModalKey = null;
+
+  // 전체 그래프 레지스트리 (analysis 필드 제외)
+  const chartRegistry = [
+    {
+      key: 'box-loss',
+      title: 'Box Loss (바운딩 박스 위치·크기 오차)',
+      badge: 'Train vs Validation Loss',
+      type: 'loss',
+      meaning: '모델이 예측한 사람 객체 바운딩 박스의 좌표(x, y, w, h)와 실제 정답 박스 간의 기하학적 오차(CIoU 손실 기반)를 측정합니다.',
+      criteria: '수치가 낮을수록 인체 위치를 흔들림 없이 타이트하게 감싸서 검출합니다. Train과 Val이 함께 안정적으로 하향 평형을 이루어야 과적합이 없습니다.'
+    },
+    {
+      key: 'cls-loss',
+      title: 'Class Loss (클래스 분류 손실)',
+      badge: 'Train vs Validation Loss',
+      type: 'loss',
+      meaning: '검출된 객체가 목표 타겟(사람, Person)인지 배경인지 판별할 때 발생하는 오분류 크로스 엔트로피 손실입니다.',
+      criteria: '수치가 낮을수록 주변 배경, 의자, 운동기구 등을 사람으로 잘못 인식하는 오탐(False Positive)이 방지됩니다.'
+    },
+    {
+      key: 'dfl-loss',
+      title: 'DFL Loss (Distribution Focal Loss / 외곽 경계 분포)',
+      badge: 'Train vs Validation Loss',
+      type: 'loss',
+      meaning: '신체 가림(Occlusion)이나 모호한 배경 속에서 바운딩 박스 모서리 좌표를 확률 분포 형태로 회귀 예측하는 손실입니다.',
+      criteria: '값이 낮을수록 모호한 팔, 다리, 발목 등 신체 외곽 경계선이 뭉개지지 않고 정확한 픽셀 단위로 정렬됩니다.'
+    },
+    {
+      key: 'lr',
+      title: 'Learning Rate (학습률 스케줄러)',
+      badge: 'Optimizer Step Size',
+      type: 'lr',
+      meaning: '모델 가중치를 역전파 최적화할 때 한 번에 이동하는 보폭(Step Size)의 변화 추이입니다.',
+      criteria: '초반 Warmup으로 가중치 폭주를 방지하고, 후반부로 갈수록 학습률을 줄여 미세한 손실 극소점(Global Minimum)에 안착하도록 유도합니다.'
+    },
+    {
+      key: 'precision',
+      title: 'Precision (B) (정밀도 - 탐지 정확성)',
+      badge: 'TP / (TP + FP)',
+      type: 'metric',
+      col: 'metrics/precision(B)',
+      meaning: '모델이 "사람"이라고 판단하여 박스를 친 대상 중 실제로 진짜 사람인 비율입니다. (오탐률/False Alarm 방지)',
+      criteria: '1.0(100%)에 가까울수록 의자나 운동기구 등 엉뚱한 배경을 사람으로 잘못 인식하는 헛것 감지 오류가 없습니다.'
+    },
+    {
+      key: 'recall',
+      title: 'Recall (B) (재현율 - 탐지 누락 방지)',
+      badge: 'TP / (TP + FN)',
+      type: 'metric',
+      col: 'metrics/recall(B)',
+      meaning: '카메라 화면에 실제로 존재하는 사람 중 모델이 놓치지 않고 바운딩 박스를 찾아낸 비율입니다. (미탐률/누락 방지)',
+      criteria: '수치가 높을수록 빠른 전신 움직임, 역광, 먼 거리에서도 인체 트래킹이 끊기거나 깜빡이지 않고 안정적으로 유지됩니다.'
+    },
+    {
+      key: 'map50',
+      title: 'mAP@0.5 (B) (평균 정밀도 - 범용 성능)',
+      badge: 'IoU Threshold = 0.50',
+      type: 'metric',
+      col: 'metrics/mAP50(B)',
+      meaning: '정답 박스와 모델의 예측 박스가 50% 이상(IoU 0.50) 겹쳤을 때 올바른 검출로 인정한 모델의 기본 탐지 점수입니다.',
+      criteria: '일반적인 객체 탐지 성능의 핵심 지표이며, 80% 이상이면 실시간 모션 트래킹 환경에서 매우 우수한 수준입니다.'
+    },
+    {
+      key: 'map5095',
+      title: 'mAP@0.5:0.95 (B) (엄격한 평균 정밀도 - 종합 대표 벤치마크)',
+      badge: 'Primary Benchmark (IoU 0.50~0.95)',
+      type: 'metric',
+      col: 'metrics/mAP50-95(B)',
+      meaning: 'IoU 기준을 50%부터 95%까지 5% 간격으로 엄격하게 높여가며 평균을 산출한 YOLO의 공식 종합 대표 벤치마크 점수입니다.',
+      criteria: '단순히 사람을 찾는 수준을 넘어, 바운딩 박스가 신체 크기에 얼마나 정밀하게 칼같이 맞아떨어지는지를 평가하는 최고 난도 지표입니다.'
+    }
+  ];
+
+  function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length < 2) return null;
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(p => p.trim());
+      if (parts.length === headers.length) {
+        const row = {};
+        headers.forEach((h, idx) => {
+          const val = parseFloat(parts[idx]);
+          row[h] = isNaN(val) ? parts[idx] : val;
+        });
+        rows.push(row);
+      }
+    }
+    return { headers, rows };
+  }
+
+  function getDatasetsForKey(key, isModal = false) {
+    if (!parsedDataset) return [];
+    const rows = parsedDataset.rows;
+    const ptRadius = isModal ? 2 : 0;
+    const ptHoverRadius = isModal ? 5 : 4;
+    const lw = isModal ? 2.5 : 1.8;
+
+    switch (key) {
+      case 'box-loss':
+        return [
+          { label: 'Train Box Loss', data: rows.map(r => r['train/box_loss']), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 },
+          { label: 'Val Box Loss', data: rows.map(r => r['val/box_loss']), borderColor: '#F43F5E', backgroundColor: 'rgba(244,63,94,0.08)', fill: isModal, borderWidth: lw, borderDash: [5, 4], pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'cls-loss':
+        return [
+          { label: 'Train Class Loss', data: rows.map(r => r['train/cls_loss']), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 },
+          { label: 'Val Class Loss', data: rows.map(r => r['val/cls_loss']), borderColor: '#F43F5E', backgroundColor: 'rgba(244,63,94,0.08)', fill: isModal, borderWidth: lw, borderDash: [5, 4], pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'dfl-loss':
+        return [
+          { label: 'Train DFL Loss', data: rows.map(r => r['train/dfl_loss']), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 },
+          { label: 'Val DFL Loss', data: rows.map(r => r['val/dfl_loss']), borderColor: '#F43F5E', backgroundColor: 'rgba(244,63,94,0.08)', fill: isModal, borderWidth: lw, borderDash: [5, 4], pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'lr':
+        return [
+          { label: 'lr/pg0 (Main)', data: rows.map(r => r['lr/pg0']), borderColor: '#FBBF24', borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 },
+          { label: 'lr/pg1 (Param Group 1)', data: rows.map(r => r['lr/pg1']), borderColor: '#34D399', borderWidth: lw - 0.4, borderDash: [4, 4], pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'precision':
+        return [
+          { label: 'Precision (B)', data: rows.map(r => r['metrics/precision(B)']), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.08)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'recall':
+        return [
+          { label: 'Recall (B)', data: rows.map(r => r['metrics/recall(B)']), borderColor: '#A855F7', backgroundColor: 'rgba(168,85,247,0.08)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'map50':
+        return [
+          { label: 'mAP@0.5 (B)', data: rows.map(r => r['metrics/mAP50(B)']), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      case 'map5095':
+        return [
+          { label: 'mAP@0.5:0.95 (B)', data: rows.map(r => r['metrics/mAP50-95(B)']), borderColor: '#38BDF8', backgroundColor: 'rgba(56,189,248,0.1)', fill: isModal, borderWidth: lw, pointRadius: ptRadius, pointHoverRadius: ptHoverRadius, tension: 0.1 }
+        ];
+      default:
+        return [];
+    }
+  }
+
+  function renderDashboard(csvText, sourceName) {
+    parsedDataset = parseCSV(csvText);
+    if (!parsedDataset || parsedDataset.rows.length === 0) {
+      alert("유효한 CSV 데이터를 읽을 수 없습니다.");
+      return;
+    }
+
+    document.getElementById('fileStatus').innerText = `Loaded: ${sourceName} (${parsedDataset.rows.length} Epochs)`;
+    const rows = parsedDataset.rows;
+    const epochs = rows.map(r => r['epoch']);
+    const lastRow = rows[rows.length - 1];
+    const totalTimeSec = lastRow['time'] || 0;
+    const totalTimeHrs = (totalTimeSec / 3600).toFixed(2);
+    const totalTimeMin = (totalTimeSec / 60).toFixed(1);
+    const avgSec = (totalTimeSec / rows.length).toFixed(1);
+
+    document.getElementById('meta-text').innerText = 
+      `Total Epochs: 1 ~ ${rows.length}   |   Training Time: ${totalTimeHrs} hrs (${totalTimeMin} min)   |   Avg/Epoch: ${avgSec}s`;
+
+    function findBest(col) {
+      let maxVal = -Infinity;
+      let maxEpoch = 1;
+      rows.forEach(r => {
+        if (r[col] > maxVal) {
+          maxVal = r[col];
+          maxEpoch = r['epoch'];
+        }
+      });
+      return { val: maxVal, epoch: maxEpoch };
+    }
+
+    const bestMap5095 = findBest('metrics/mAP50-95(B)');
+    const bestMap50 = findBest('metrics/mAP50(B)');
+    const bestPrec = findBest('metrics/precision(B)');
+    const bestRec = findBest('metrics/recall(B)');
+
+    document.getElementById('kpi-map5095').innerText = bestMap5095.val.toFixed(4);
+    document.getElementById('kpi-map5095-sub').innerText = `Best: Ep ${bestMap5095.epoch} (Final: ${(lastRow['metrics/mAP50-95(B)'] || 0).toFixed(4)})`;
+
+    document.getElementById('kpi-map50').innerText = bestMap50.val.toFixed(4);
+    document.getElementById('kpi-map50-sub').innerText = `Best: Ep ${bestMap50.epoch} (Final: ${(lastRow['metrics/mAP50(B)'] || 0).toFixed(4)})`;
+
+    document.getElementById('kpi-prec').innerText = bestPrec.val.toFixed(4);
+    document.getElementById('kpi-prec-sub').innerText = `Best: Ep ${bestPrec.epoch} (Final: ${(lastRow['metrics/precision(B)'] || 0).toFixed(4)})`;
+
+    document.getElementById('kpi-rec').innerText = bestRec.val.toFixed(4);
+    document.getElementById('kpi-rec-sub').innerText = `Best: Ep ${bestRec.epoch} (Final: ${(lastRow['metrics/recall(B)'] || 0).toFixed(4)})`;
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#94A3B8', boxWidth: 12, font: { size: 10 } }
+        },
+        tooltip: {
+          backgroundColor: '#1E293B',
+          titleColor: '#FFFFFF',
+          bodyColor: '#E2E8F0',
+          borderColor: '#334155',
+          borderWidth: 1,
+          callbacks: {
+            title: items => `Epoch ${items[0].label}`,
+            label: context => ` ${context.dataset.label}: ${context.parsed.y.toFixed(5)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94A3B8', font: { size: 9 }, maxTicksLimit: 14 },
+          grid: { color: '#1E293B' },
+          title: { display: true, text: 'Epoch', color: '#64748B', font: { size: 10 } }
+        },
+        y: {
+          ticks: { color: '#94A3B8', font: { size: 9 } },
+          grid: { color: '#1E293B' }
+        }
+      }
+    };
+
+    function createOrUpdateChart(id, datasets) {
+      if (chartInstances[id]) chartInstances[id].destroy();
+      const ctx = document.getElementById(id).getContext('2d');
+      chartInstances[id] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: epochs, datasets: datasets },
+        options: commonOptions
+      });
+    }
+
+    createOrUpdateChart('chart-box-loss', getDatasetsForKey('box-loss'));
+    createOrUpdateChart('chart-cls-loss', getDatasetsForKey('cls-loss'));
+    createOrUpdateChart('chart-dfl-loss', getDatasetsForKey('dfl-loss'));
+    createOrUpdateChart('chart-lr', getDatasetsForKey('lr'));
+    createOrUpdateChart('chart-precision', getDatasetsForKey('precision'));
+    createOrUpdateChart('chart-recall', getDatasetsForKey('recall'));
+    createOrUpdateChart('chart-map50', getDatasetsForKey('map50'));
+    createOrUpdateChart('chart-map5095', getDatasetsForKey('map5095'));
+
+    // 테이블 채우기
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+    thead.innerHTML = parsedDataset.headers.map(h => `<th>${h}</th>`).join('');
+    tbody.innerHTML = rows.map(r => {
+      return `<tr>${parsedDataset.headers.map(h => `<td>${typeof r[h] === 'number' ? r[h].toFixed(4) : r[h]}</td>`).join('')}</tr>`;
+    }).join('');
+  }
+
+  // 모달 팝업 열기
+  function openChartModal(chartKey) {
+    currentModalKey = chartKey;
+    const chartInfo = chartRegistry.find(c => c.key === chartKey);
+    if (!chartInfo || !parsedDataset) return;
+
+    const rows = parsedDataset.rows;
+    const totalEp = rows[rows.length - 1]['epoch'];
+
+    document.getElementById('modalChartTitle').innerText = chartInfo.title;
+    document.getElementById('modalChartBadge').innerText = chartInfo.badge;
+
+    // 지표 의미 및 해석 기준 주입 (학습 분석 제거)
+    document.getElementById('descMeaning').innerText = chartInfo.meaning;
+    document.getElementById('descCriteria').innerText = chartInfo.criteria;
+
+    // 통계 칩스 바 생성
+    const statsBar = document.getElementById('modalStatsBar');
+    let statsHtml = ``;
+
+    if (chartInfo.type === 'metric' && chartInfo.col) {
+      const vals = rows.map(r => r[chartInfo.col]);
+      const maxVal = Math.max(...vals);
+      const maxEp = rows.find(r => r[chartInfo.col] === maxVal)['epoch'];
+      const minVal = Math.min(...vals);
+      const finalVal = vals[vals.length - 1];
+      const avgVal = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(4);
+
+      statsHtml = `
+        <div class="stat-pill">🏆 최고점 (Best): <strong style="color:var(--c-cyan);">${maxVal.toFixed(4)}</strong> (Epoch ${maxEp})</div>
+        <div class="stat-pill">🏁 최종값 (Final): <strong>${finalVal.toFixed(4)}</strong> (Epoch ${totalEp})</div>
+        <div class="stat-pill">📉 최저점 (Min): <strong>${minVal.toFixed(4)}</strong></div>
+        <div class="stat-pill">📊 전체 평균 (Avg): <strong>${avgVal}</strong></div>
+      `;
+    } else if (chartInfo.type === 'loss') {
+      const trainCol = `train/${chartKey.replace('-', '_')}`;
+      const valCol = `val/${chartKey.replace('-', '_')}`;
+      const trainVals = rows.map(r => r[trainCol]);
+      const valVals = rows.map(r => r[valCol]);
+      const minTrain = Math.min(...trainVals).toFixed(4);
+      const minVal = Math.min(...valVals).toFixed(4);
+      const finalTrain = trainVals[trainVals.length - 1].toFixed(4);
+      const finalVal = valVals[valVals.length - 1].toFixed(4);
+
+      statsHtml = `
+        <div class="stat-pill">📉 최저 Train Loss: <strong style="color:var(--c-cyan);">${minTrain}</strong> (Final: ${finalTrain})</div>
+        <div class="stat-pill">🎯 최저 Val Loss: <strong style="color:var(--c-rose);">${minVal}</strong> (Final: ${finalVal})</div>
+        <div class="stat-pill">총 에포크: <strong>1 ~ ${totalEp}</strong></div>
+      `;
+    } else if (chartInfo.type === 'lr') {
+      const maxLr = Math.max(...rows.map(r => r['lr/pg0'])).toFixed(6);
+      const finalLr = rows[rows.length - 1]['lr/pg0'].toFixed(6);
+      const peakRow = rows.find(r => r['lr/pg0'] === Math.max(...rows.map(x => x['lr/pg0'])));
+      const peakEp = peakRow ? peakRow['epoch'] : 3;
+      statsHtml = `
+        <div class="stat-pill">⚡ 초기 피크 LR: <strong style="color:var(--c-yellow);">${maxLr}</strong> (Epoch ${peakEp})</div>
+        <div class="stat-pill">🏁 최종 감쇄 LR: <strong>${finalLr}</strong> (Epoch ${totalEp})</div>
+        <div class="stat-pill">스케줄러: <strong>Warmup + Cosine Decay</strong></div>
+      `;
+    }
+    statsBar.innerHTML = statsHtml;
+
+    // 대형 Chart.js 인스턴스 생성
+    if (modalChartInstance) modalChartInstance.destroy();
+    const ctx = document.getElementById('modalChartCanvas').getContext('2d');
+    const datasets = getDatasetsForKey(chartKey, true);
+
+    modalChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: rows.map(r => r['epoch']),
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: '#F8FAFC',
+              font: { size: 12, weight: 'bold' },
+              padding: 18,
+              boxWidth: 16
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleColor: '#38BDF8',
+            titleFont: { size: 13, weight: 'bold' },
+            bodyColor: '#F8FAFC',
+            bodyFont: { size: 12 },
+            borderColor: '#38BDF8',
+            borderWidth: 1,
+            padding: 12,
+            boxPadding: 6,
+            callbacks: {
+              title: items => `Epoch ${items[0].label}`,
+              label: function(context) {
+                return ` ${context.dataset.label}: ${context.parsed.y.toFixed(5)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#94A3B8', font: { size: 11 }, maxTicksLimit: 25 },
+            grid: { color: 'rgba(34, 49, 78, 0.6)' },
+            title: { display: true, text: `Training Epochs (1 ~ ${totalEp})`, color: '#38BDF8', font: { size: 12, weight: 'bold' } }
+          },
+          y: {
+            ticks: { color: '#94A3B8', font: { size: 11 }, padding: 8 },
+            grid: { color: 'rgba(34, 49, 78, 0.6)' },
+            title: { display: true, text: 'Value', color: '#94A3B8', font: { size: 11 } }
+          }
+        }
+      }
+    });
+
+    document.getElementById('chartModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeChartModal() {
+    document.getElementById('chartModal').classList.remove('active');
+    document.body.style.overflow = '';
+    if (modalChartInstance) {
+      modalChartInstance.destroy();
+      modalChartInstance = null;
+    }
+  }
+
+  function handleModalBackdropClick(e) {
+    if (e.target.id === 'chartModal') {
+      closeChartModal();
+    }
+  }
+
+  function navigateModalChart(direction) {
+    if (!currentModalKey) return;
+    const currentIndex = chartRegistry.findIndex(c => c.key === currentModalKey);
+    let nextIndex = (currentIndex + direction + chartRegistry.length) % chartRegistry.length;
+    openChartModal(chartRegistry[nextIndex].key);
+  }
+
+  window.addEventListener('keydown', e => {
+    const modal = document.getElementById('chartModal');
+    if (!modal.classList.contains('active')) return;
+
+    if (e.key === 'Escape') {
+      closeChartModal();
+    } else if (e.key === 'ArrowLeft') {
+      navigateModalChart(-1);
+    } else if (e.key === 'ArrowRight') {
+      navigateModalChart(1);
+    }
+  });
+
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => renderDashboard(e.target.result, file.name);
+      reader.readAsText(file);
+    }
+  }
+
+  // 화면 드래그 앤 드롭 지원
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onload = ev => renderDashboard(ev.target.result, file.name);
+      reader.readAsText(file);
+    }
+  });
+
+  function toggleTable() {
+    const container = document.getElementById('tableContainer');
+    const btn = document.getElementById('table-toggle-btn');
+    if (container.classList.contains('open')) {
+      container.classList.remove('open');
+      btn.innerText = '클릭하여 펼치기 ▼';
+    } else {
+      container.classList.add('open');
+      btn.innerText = '클릭하여 접기 ▲';
+    }
+  }
+
+  // 초기 자동 로드 (실패 시 기본 fallback 사용)
+  window.addEventListener('DOMContentLoaded', () => {
+    fetch('./results.csv')
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+        return res.text();
+      })
+      .then(text => renderDashboard(text, "./results.csv"))
+      .catch(err => {
+        const fallbackText = document.getElementById('fallback-csv').innerText.trim();
+        if (fallbackText) renderDashboard(fallbackText, "results.csv (기본 샘플)");
+      });
+  });
+</script>
+</body>
+</html>
