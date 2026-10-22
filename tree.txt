@@ -1,0 +1,20 @@
+.
+|-- ./GO
+|   |-- ./GO/@eaDir
+|   |   `-- ./GO/@eaDir/gemini_segment_verification_viewer.html@SynoEAStream
+|   |-- ./GO/final_scores.html
+|   `-- ./GO/past
+|       |-- ./GO/past/gemini_segment_verification_viewer.html
+|       |-- ./GO/past/gt_astra_verification_dashboard.html
+|       `-- ./GO/past/unified_multimodal_dashboard.html
+|-- ./KIM_WON
+|   |-- ./KIM_WON/@eaDir
+|   |   `-- ./KIM_WON/@eaDir/results.csv@SynoEAStream
+|   |-- ./KIM_WON/results.csv
+|   `-- ./KIM_WON/training_dashboard.html
+|-- ./README.md
+|-- ./build_hub.py
+|-- ./index.html
+`-- ./tree.txt
+
+5 directories, 12 files
