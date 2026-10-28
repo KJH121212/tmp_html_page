@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Streamlit Client ↔ Socket Server 통신 및 JSON 고속도로 시뮬레이터</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              bg: '#090d16',
+              card: '#111827',
+              inner: '#0b1120',
+              border: '#1e293b',
+              accent: '#38bdf8',
+              stream: '#ff4b4b',
+              server: '#10b981',
+              warning: '#f59e0b',
+              purple: '#a855f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    
+    /* Packet Transfer Pulse Animations */
+    @keyframes flyRight {
+      0% { transform: translateX(0) scale(0.9); opacity: 0; }
+      20% { opacity: 1; transform: translateX(30px) scale(1); }
+      80% { opacity: 1; transform: translateX(180px) scale(1); }
+      100% { transform: translateX(220px) scale(0.9); opacity: 0; }
+    }
+    @keyframes flyLeft {
+      0% { transform: translateX(0) scale(0.9); opacity: 0; }
+      20% { opacity: 1; transform: translateX(-30px) scale(1); }
+      80% { opacity: 1; transform: translateX(-180px) scale(1); }
+      100% { transform: translateX(-220px) scale(0.9); opacity: 0; }
+    }
+    .packet-flying-right { animation: flyRight 1.2s infinite ease-in-out; }
+    .packet-flying-left { animation: flyLeft 1.2s infinite ease-in-out; }
+
+    /* Syntax Highlighting */
+    .json-key { color: #38bdf8; font-weight: 600; }
+    .json-str { color: #34d399; }
+    .json-num { color: #fbbf24; }
+    .json-bool { color: #f472b6; }
+    .json-null { color: #94a3b8; font-style: italic; }
+  </style>
+</head>
+<body class="bg-brand-bg text-slate-100 min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
+
+  <!-- Top Header Bar -->
+  <header class="border-b border-brand-border bg-slate-950/80 backdrop-blur px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-black text-lg">
+        <i class="fa-solid fa-arrows-left-right-to-line text-sm"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
+          Streamlit Client <span class="text-sky-400 font-mono text-xs px-2 py-0.5 rounded bg-sky-950/60 border border-sky-800">WebSocket JSON Highway</span> Exercise Socket Server
+        </h1>
+        <p class="text-xs text-slate-400">YOLOv8 + RTMPose 추론 서버와 Streamlit UI 간의 실시간 비동기 입출력 데이터 시뮬레이터</p>
+      </div>
+    </div>
+
+    <!-- Scenario Switcher Pills -->
+    <div class="flex items-center gap-1.5 overflow-x-auto bg-slate-900/90 p-1 rounded-xl border border-brand-border text-xs">
+      <button onclick="setScenario(0)" id="sc-btn-0" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-sky-400 bg-sky-950/70 border border-sky-700/50">
+        <i class="fa-solid fa-hourglass-start mr-1"></i>1. 모델 펜딩
+      </button>
+      <button onclick="setScenario(1)" id="sc-btn-1" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+        <i class="fa-solid fa-drafting-compass mr-1"></i>2. 캘리브레이션 (3회)
+      </button>
+      <button onclick="setScenario(2)" id="sc-btn-2" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+        <i class="fa-solid fa-person-running mr-1"></i>3. 본측정 (3등급 채점)
+      </button>
+      <button onclick="setScenario(3)" id="sc-btn-3" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-amber-400 hover:text-amber-300">
+        <i class="fa-solid fa-sliders mr-1"></i>4. 실시간 임계값 수정 ★
+      </button>
+      <button onclick="setScenario(4)" id="sc-btn-4" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+        <i class="fa-solid fa-flag-checkered mr-1"></i>5. 목표 도달 종료/저장
+      </button>
+      <button onclick="setScenario(5)" id="sc-btn-5" class="sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-red-400 hover:text-red-300">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>6. 충돌 & 리셋
+      </button>
+    </div>
+
+    <!-- Playback Controls -->
+    <div class="flex items-center gap-2">
+      <button onclick="prevStep()" id="btn-prev" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 disabled:opacity-40">
+        <i class="fa-solid fa-chevron-left mr-1"></i>이전
+      </button>
+      <span id="step-counter" class="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-sky-400">
+        STEP 1 / 4
+      </span>
+      <button onclick="nextStep()" id="btn-next" class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-semibold text-white shadow-md shadow-sky-600/20">
+        다음<i class="fa-solid fa-chevron-right ml-1"></i>
+      </button>
+      <button onclick="toggleAutoPlay()" id="btn-play" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 text-xs">
+        <i class="fa-solid fa-play" id="icon-play"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Process Explanation Banner (Top Notification Bar) -->
+  <section class="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-brand-border px-6 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span id="phase-badge" class="px-2.5 py-1 rounded-full text-xs font-bold font-mono tracking-wider uppercase border border-sky-500/40 bg-sky-950 text-sky-400 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+          PHASE: INITIALIZING
+        </span>
+        <h2 id="phase-title" class="font-bold text-sm md:text-base text-slate-100 flex items-center gap-2">
+          서버 접속 및 모델 비동기 로딩 대기
+        </h2>
+      </div>
+      <p id="phase-desc" class="text-xs md:text-sm text-slate-300 leading-relaxed max-w-4xl">
+        클라이언트가 소켓에 접속하면 서버는 AI 모델 로딩 상태를 즉시 스트리밍합니다. 모델 준비 전 세션 시작 명령이 인입되면 거절하지 않고 <code>SESSION_PENDING</code>으로 큐잉합니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main 3-Column Visualizer Highway -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 max-w-[1680px] w-full mx-auto items-stretch">
+
+    <!-- LEFT COLUMN: Streamlit Client UI State (3.5 cols) -->
+    <div class="lg:col-span-3 bg-brand-card rounded-2xl border border-brand-border p-4 flex flex-col gap-3 shadow-xl shadow-black/40">
+      <!-- Client Header -->
+      <div class="flex items-center justify-between border-b border-brand-border pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-500/50"></div>
+          <span class="font-extrabold text-sm tracking-tight text-white flex items-center gap-1">
+            <i class="fa-solid fa-cubes text-red-400 text-xs"></i> Streamlit App
+          </span>
+          <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">localhost:8501</span>
+        </div>
+        <div id="st-conn-status" class="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> CONNECTED
+        </div>
+      </div>
+
+      <!-- Mock UI Form Fields -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800/80 flex flex-col gap-2.5 text-xs">
+        <div class="flex items-center justify-between text-slate-400 font-semibold border-b border-slate-800 pb-1.5">
+          <span><i class="fa-solid fa-sliders text-sky-400 mr-1"></i>실험 조건 파라미터</span>
+          <span class="text-[10px] text-slate-500 font-mono">app.py control</span>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-slate-400">환자 ID (patient_id)</label>
+            <input type="text" id="ui-patient-id" value="0000" readonly class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono text-xs">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400">운동 종목 (exercise)</label>
+            <input type="text" id="ui-exercise" value="knee_extension" readonly class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono text-xs">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5">
+          <div>
+            <label class="text-[10px] text-slate-400">측정 모드</label>
+            <div id="ui-mode-badge" class="bg-purple-950 text-purple-300 border border-purple-800 text-center py-1 rounded font-bold text-[11px]">CALIBRATION</div>
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400">라운드 / 세트</label>
+            <div id="ui-round-set" class="bg-slate-900 text-slate-300 border border-slate-800 text-center py-1 rounded font-mono text-[11px]">Rd 2 / Set 1</div>
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400">목표 횟수/점수</label>
+            <div id="ui-target-reps" class="bg-slate-900 text-amber-300 border border-slate-800 text-center py-1 rounded font-mono font-bold text-[11px]">3회 / 10.0점</div>
+          </div>
+        </div>
+
+        <!-- Realtime Gauges -->
+        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800 flex flex-col gap-2 mt-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-300 font-bold flex items-center gap-1.5">
+              <span id="ui-left-dot" class="w-2 h-2 rounded-full bg-sky-400"></span> 좌측 반복(L)
+            </span>
+            <span id="ui-left-val" class="font-mono text-sky-400 font-bold">0 / 3 회 (0.00)</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="ui-left-bar" class="bg-sky-500 h-full w-[0%] transition-all duration-300"></div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] mt-1">
+            <span class="text-slate-300 font-bold flex items-center gap-1.5">
+              <span id="ui-right-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span> 우측 반복(R)
+            </span>
+            <span id="ui-right-val" class="font-mono text-emerald-400 font-bold">0 / 3 회 (0.00)</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="ui-right-bar" class="bg-emerald-500 h-full w-[0%] transition-all duration-300"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button States -->
+      <div class="flex flex-col gap-2 mt-auto">
+        <div class="flex gap-2">
+          <button id="ui-btn-start" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md shadow-emerald-700/20 flex items-center justify-center gap-1.5 opacity-90">
+            <i class="fa-solid fa-play"></i> 측정 시작
+          </button>
+          <button id="ui-btn-stop" class="flex-1 py-2 rounded-xl bg-slate-800 text-slate-400 font-bold text-xs border border-slate-700 flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-stop"></i> 종료 · 저장
+          </button>
+        </div>
+        <div class="text-[10px] text-slate-500 flex items-center justify-between px-1">
+          <span><i class="fa-solid fa-camera mr-1"></i>Motion Window (OpenCV HD)</span>
+          <span id="ui-cam-status" class="text-emerald-400">Preview Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE COLUMN: WebSocket Highway & JSON Payload Inspector (5.5 cols) -->
+    <div class="lg:col-span-6 bg-brand-card rounded-2xl border border-brand-border p-4 flex flex-col gap-3 shadow-xl shadow-black/40">
+      
+      <!-- Highway Direction Indicator Bar -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2 text-xs font-bold text-red-400">
+          <i class="fa-solid fa-desktop"></i>
+          <span>Streamlit (Client)</span>
+        </div>
+
+        <!-- Animated Center Transfer Graphic -->
+        <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden py-1 px-4">
+          <div class="text-[11px] font-mono font-bold tracking-wider uppercase mb-1 flex items-center gap-1.5" id="transfer-dir-text">
+            <i class="fa-solid fa-arrow-right text-sky-400"></i> CLIENT &rarr; SERVER
+          </div>
+          <div class="w-full h-1 bg-slate-800 rounded-full relative flex items-center">
+            <!-- Animated Particle -->
+            <div id="transfer-particle" class="w-6 h-6 rounded-full bg-sky-500/80 border border-white/80 shadow-lg shadow-sky-500/50 flex items-center justify-center text-[9px] text-white absolute left-0 packet-flying-right">
+              <i class="fa-solid fa-envelope"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs font-bold text-emerald-400">
+          <span>Socket Server (AI)</span>
+          <i class="fa-solid fa-server"></i>
+        </div>
+      </div>
+
+      <!-- JSON Viewer Header -->
+      <div class="flex items-center justify-between pt-1">
+        <div class="flex items-center gap-2">
+          <span id="packet-type-badge" class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800">
+            CMD_SET_SESSION
+          </span>
+          <span id="packet-dir-badge" class="text-[11px] font-medium text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+            요청 페이로드 (Request)
+          </span>
+        </div>
+        <button onclick="copyCurrentJSON()" class="text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 flex items-center gap-1 transition">
+          <i class="fa-regular fa-copy"></i> JSON 복사
+        </button>
+      </div>
+
+      <!-- JSON Code Block -->
+      <div class="flex-1 bg-slate-950 rounded-xl border border-slate-800/80 p-3.5 overflow-auto font-mono text-[12px] leading-relaxed relative min-h-[280px]">
+        <pre id="json-code-display"><code class="text-slate-300">// JSON 페이로드가 여기에 실시간 렌더링됩니다.</code></pre>
+      </div>
+
+      <!-- Packet Field Explanations (Cheat Sheet) -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800 text-xs">
+        <div class="text-[11px] font-bold text-sky-400 mb-1.5 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info"></i> 핵심 필드 및 프로토콜 규격 해설
+        </div>
+        <div id="field-notes" class="text-slate-300 leading-normal space-y-1">
+          <!-- Dynamic field descriptions -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Socket Server & AI Engine Internal State (3.5 cols) -->
+    <div class="lg:col-span-3 bg-brand-card rounded-2xl border border-brand-border p-4 flex flex-col gap-3 shadow-xl shadow-black/40">
+      <!-- Server Header -->
+      <div class="flex items-center justify-between border-b border-brand-border pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></div>
+          <span class="font-extrabold text-sm tracking-tight text-white flex items-center gap-1">
+            <i class="fa-solid fa-server text-emerald-400 text-xs"></i> Socket Server
+          </span>
+          <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">ws:8080</span>
+        </div>
+        <div id="srv-owner-status" class="text-[11px] font-mono text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded-full">
+          Owner: ws_id(0x7f)
+        </div>
+      </div>
+
+      <!-- AI Inference Engine State -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800/80 flex flex-col gap-2 text-xs">
+        <div class="text-slate-400 font-semibold border-b border-slate-800 pb-1 flex items-center justify-between">
+          <span><i class="fa-solid fa-brain text-emerald-400 mr-1"></i>AI 백엔드 엔진 상태</span>
+          <span id="srv-fps" class="text-[11px] font-mono text-emerald-400 font-bold">30.0 FPS</span>
+        </div>
+
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">모델 로딩 상태</span>
+          <span id="srv-model-state" class="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-900">READY (GPU CUDA)</span>
+        </div>
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">자세 추정 엔진</span>
+          <span class="font-mono text-slate-300">YOLOv8n + RTMPose</span>
+        </div>
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">스무딩 필터</span>
+          <span id="srv-filter" class="font-mono text-sky-300">OneEuroKeypointFilter</span>
+        </div>
+      </div>
+
+      <!-- Motion Engine & FSM Status -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800/80 flex flex-col gap-2 text-xs">
+        <div class="text-slate-400 font-semibold border-b border-slate-800 pb-1 flex items-center justify-between">
+          <span><i class="fa-solid fa-gear text-amber-400 mr-1"></i>모션 FSM & 기준선 (Threshold)</span>
+          <span id="srv-th-version" class="text-[10px] font-mono text-amber-400 bg-amber-950/60 border border-amber-800 px-1.5 py-0.5 rounded">ver 0</span>
+        </div>
+
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">FSM 카운트 단계</span>
+          <span id="srv-fsm-state" class="font-mono font-bold text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900">READY</span>
+        </div>
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">적용 시작 Y (Start)</span>
+          <span id="srv-start-val" class="font-mono text-slate-300">0.82 (좌) / 0.81 (우)</span>
+        </div>
+        <div class="flex justify-between items-center py-0.5">
+          <span class="text-slate-400">적용 목표 Y (Target)</span>
+          <span id="srv-target-val" class="font-mono text-slate-300">0.61 (좌) / 0.60 (우)</span>
+        </div>
+      </div>
+
+      <!-- Data Manager & File Logging -->
+      <div class="bg-brand-inner rounded-xl p-3 border border-slate-800/80 flex flex-col gap-1.5 text-xs mt-auto">
+        <div class="text-slate-400 font-semibold border-b border-slate-800 pb-1 flex items-center justify-between">
+          <span><i class="fa-solid fa-floppy-disk text-purple-400 mr-1"></i>3종 로그 실시간 스트림</span>
+          <span id="srv-log-status" class="text-[10px] text-emerald-400 font-mono">APPENDING</span>
+        </div>
+        <div class="font-mono text-[11px] text-slate-400 flex flex-col gap-1">
+          <div class="flex items-center gap-1.5"><i class="fa-solid fa-file-video text-sky-400"></i> <span id="file-mp4">09-10-00_MAIN...mp4 (HD 720p)</span></div>
+          <div class="flex items-center gap-1.5"><i class="fa-solid fa-file-csv text-emerald-400"></i> <span id="file-csv">09-10-00_MAIN...csv (Frame events)</span></div>
+          <div class="flex items-center gap-1.5"><i class="fa-solid fa-cubes text-purple-400"></i> <span id="file-npz">09-10-00_MAIN...npz (17 kpts tensor)</span></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Simulator Engine JS -->
+  <script>
+    // 6 Scenarios Detailed Steps Database
+    const SCENARIOS = [
+      // 0: Model Loading & Pending
+      {
+        id: 0,
+        title: "상황 1: AI 모델 로딩 중 세션 요청 (SESSION_PENDING 대기 및 자동 시작)",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: CONNECTED",
+            phaseTitle: "서버 연결 수립 및 모델 초기화 단계 브로드캐스트",
+            phaseDesc: "Streamlit 클라이언트가 WebSocket으로 접속하면 서버는 비동기 백그라운드 스레드에서 돌고 있는 모델의 적재 상태를 `SERVER_STATUS`로 지속적으로 보냅니다.",
+            direction: "S2C",
+            packetType: "SERVER_STATUS",
+            packetRole: "서버 상태 브로드캐스트 (Server &rarr; Client)",
+            json: {
+              "type": "SERVER_STATUS",
+              "model_state": "LOADING",
+              "phase": "LOADING_POSE",
+              "ready": false,
+              "elapsed_seconds": 3.24,
+              "phase_seconds": 1.12,
+              "message": "RTMPose 관절 모델을 GPU 메모리에 로딩 중..."
+            },
+            notes: [
+              "<strong>model_state:</strong> `LOADING` 중이며 아직 측정 요청을 즉시 처리할 수 없습니다.",
+              "<strong>ready: false:</strong> 모델 준비 전이므로 클라이언트는 로딩 인디케이터를 띄웁니다.",
+              "<strong>elapsed_seconds:</strong> 백그라운드 스레드에서 모델 적재에 소요된 총 시간입니다."
+            ],
+            ui: { mode: "IDLE", leftVal: "0 / 0 회", rightVal: "0 / 0 회", leftPct: "0%", rightPct: "0%", btnStart: "준비 대기중...", startClass: "opacity-50" },
+            srv: { modelState: "LOADING (IMPORTING)", fps: "0.0 FPS", fsm: "IDLE", thVer: "ver 0", startVal: "-", targetVal: "-", logStatus: "STANDBY" }
+          },
+          {
+            phaseBadge: "PHASE 2: SESSION PENDING",
+            phaseTitle: "로딩 완료 전 세션 시작 명령 인입 (큐잉 처리)",
+            phaseDesc: "사용자가 로딩 완료를 기다리지 않고 '측정 시작'을 눌렀습니다. 서버는 거절하지 않고 세션 요청을 보관하며 `SESSION_PENDING` 응답을 회신합니다.",
+            direction: "C2S",
+            packetType: "CMD_SET_SESSION",
+            packetRole: "클라이언트 세션 시작 요청 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_SET_SESSION",
+              "patient_id": "0000",
+              "patient_name": "홍길동",
+              "exercise_name": "knee_extension",
+              "mode": "CALIBRATION",
+              "output_mode": "LIGHTWEIGHT",
+              "round": 2,
+              "camera_index": 0,
+              "preparation_seconds": 5
+            },
+            notes: [
+              "<strong>mode: CALIBRATION:</strong> 개인 맞춤 가동 범위를 찾기 위한 3회 캘리브레이션 모드입니다.",
+              "<strong>target_reps:</strong> CAL 모드에서는 별도 지정하지 않아도 서버가 3회로 자동 고정합니다.",
+              "<strong>preparation_seconds:</strong> 측정 시작 전 정적 휴식 자세를 확보하기 위한 5초 대기 시간입니다."
+            ],
+            ui: { mode: "PENDING", leftVal: "대기 중...", rightVal: "대기 중...", leftPct: "0%", rightPct: "0%", btnStart: "서버 대기열 등록됨", startClass: "bg-amber-600 text-white" },
+            srv: { modelState: "LOADING (PENDING QUEUED)", fps: "0.0 FPS", fsm: "QUEUE_WAIT", thVer: "ver 0", startVal: "-", targetVal: "-", logStatus: "QUEUED" }
+          },
+          {
+            phaseBadge: "PHASE 3: MODEL READY",
+            phaseTitle: "모델 비동기 로딩 완료 브로드캐스트",
+            phaseDesc: "백그라운드 스레드에서 RTMPose와 YOLOv8 가중치 적재가 완료되어 `ready: true`로 상태가 전이되었습니다. 큐잉된 세션이 자동 개시됩니다.",
+            direction: "S2C",
+            packetType: "SERVER_STATUS",
+            packetRole: "모델 준비 완료 통보 (Server &rarr; Client)",
+            json: {
+              "type": "SERVER_STATUS",
+              "model_state": "READY",
+              "phase": "FINISHED",
+              "ready": true,
+              "elapsed_seconds": 4.82,
+              "phase_seconds": 0.35,
+              "message": "모델 준비 완료. 큐잉된 세션을 즉시 개시합니다."
+            },
+            notes: [
+              "<strong>ready: true:</strong> 이제 실시간 프레임 추론 파이프라인이 즉시 가동됩니다.",
+              "서버는 별도 요청 없이도 방금 큐잉되었던 `CMD_SET_SESSION`을 스스로 승인하여 카메라를 오픈합니다."
+            ],
+            ui: { mode: "CALIBRATION", leftVal: "0 / 3 회", rightVal: "0 / 3 회", leftPct: "0%", rightPct: "0%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "INITIALIZING", thVer: "ver 0", startVal: "-", targetVal: "-", logStatus: "OPENING" }
+          },
+          {
+            phaseBadge: "PHASE 4: PREPARING",
+            phaseTitle: "5초 준비 시간 카운트다운 시작",
+            phaseDesc: "웹캠이 DirectShow HD로 열리고 환자의 5초 기본 자세 카운트다운이 시작됩니다. 이 시간 동안 초기 불변 종아리 길이를 확보합니다.",
+            direction: "S2C",
+            packetType: "SESSION_PREPARING",
+            packetRole: "준비 카운트다운 알림 (Server &rarr; Client)",
+            json: {
+              "type": "SESSION_PREPARING",
+              "remaining_seconds": 5,
+              "message": "기본 자세를 취해 주세요. 5초 후 측정을 시작합니다."
+            },
+            notes: [
+              "<strong>remaining_seconds:</strong> 매 1초마다 감소된 정수 초가 전송되어 UI에 5.. 4.. 3.. 카운트다운을 표시합니다.",
+              "이 구간에서 캡처된 정적 발목/무릎 좌표가 Knee Extension의 상대 상승량 분모가 됩니다."
+            ],
+            ui: { mode: "CALIBRATION", leftVal: "자세 잡는 중... (5s)", rightVal: "자세 잡는 중... (5s)", leftPct: "0%", rightPct: "0%", btnStart: "준비 대기중", startClass: "bg-teal-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "PREPARING_HOLD", thVer: "ver 0", startVal: "-", targetVal: "-", logStatus: "READY" }
+          }
+        ]
+      },
+
+      // 1: Calibration (3 Reps)
+      {
+        id: 1,
+        title: "상황 2: 개인 맞춤 캘리브레이션 (좌우 각 3회 측정 및 기준 JSON 자동 생성)",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: LOG STARTED",
+            phaseTitle: "로그 세션 인스턴스 생성 및 세션 ID 발급",
+            phaseDesc: "준비 시간이 끝나며 디스크에 `09-00-00_CALIBRATION_round02` 파일 핸들러가 열리고 세션 ID가 클라이언트에 전달됩니다.",
+            direction: "S2C",
+            packetType: "SESSION_LOG_STARTED",
+            packetRole: "로그 세션 생성 통보 (Server &rarr; Client)",
+            json: {
+              "type": "SESSION_LOG_STARTED",
+              "session_id": "20261028-090000-0000",
+              "player_id": "0000",
+              "patient_name": "홍길동",
+              "exercise_name": "knee_extension",
+              "mode": "CALIBRATION",
+              "round_number": 2,
+              "target_reps": 3,
+              "preparation_seconds": 5
+            },
+            notes: [
+              "<strong>session_id:</strong> 추후 세션 종료나 리셋 검증에 사용되는 전역 고유 세션 식별자입니다.",
+              "이 패킷이 왔다고 해서 준비 시간이 끝난 것은 아니며, 뒤이어 `SESSION_MEASUREMENT_STARTED`가 발송됩니다."
+            ],
+            ui: { mode: "CALIBRATION", leftVal: "0 / 3 회", rightVal: "0 / 3 회", leftPct: "0%", rightPct: "0%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "ACTIVE", thVer: "ver 0", startVal: "종아리 고정", targetVal: "상대 30%", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 2: RELATIVE STREAM",
+            phaseTitle: "실시간 상대 상승량 연산 및 카운트 갱신 스트림",
+            phaseDesc: "무릎 신전 캘리브레이션은 몸통 정규화(Unnorm) 없이 <code>(기본 발목 Y - 현재 발목 Y) / 초기 종아리 길이</code>를 계산하여 30% 도달 시 1회를 카운트합니다.",
+            direction: "S2C",
+            packetType: "POSE_UPDATE",
+            packetRole: "실시간 측정 스트림 (Server &rarr; Client)",
+            json: {
+              "type": "POSE_UPDATE",
+              "mode": "CALIBRATION",
+              "fps": 30.0,
+              "calib_step": "ACTIVE",
+              "calib_rep_count": 3,
+              "calib_reps_left": 2,
+              "calib_reps_right": 1,
+              "target_calib_reps": 3,
+              "left": {
+                "val": 0.45,
+                "rep_count": 2,
+                "progress_ratio": 0.45,
+                "is_count_updated": true
+              },
+              "right": {
+                "val": 0.12,
+                "rep_count": 1,
+                "progress_ratio": 0.12,
+                "is_count_updated": false
+              },
+              "is_occluded": false
+            },
+            notes: [
+              "<strong>val: 0.45:</strong> 초기 종아리 길이 대비 발목이 45% 상승했음을 의미합니다.",
+              "<strong>calib_reps_left: 2:</strong> 좌측 다리는 이미 2회를 성공했고, 우측은 1회를 완료한 상태입니다.",
+              "<strong>복귀 규칙:</strong> 15% 이하로 내려와야 다음 반복 카운트가 활성화됩니다."
+            ],
+            ui: { mode: "CALIBRATION", leftVal: "2 / 3 회 (45%)", rightVal: "1 / 3 회 (12%)", leftPct: "66%", rightPct: "33%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "CALIB_ACTIVE", thVer: "ver 0", startVal: "종아리 고정", targetVal: "상대 30%", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 3: CAL COMPLETED",
+            phaseTitle: "좌우 3회 완수 및 85% 가동 범위 기준 JSON 저장",
+            phaseDesc: "좌우 각 3회를 모두 달성했습니다. 서버는 관찰된 3회 가동 범위의 85% 지점을 본측정 목표 Y로 자동 계산하고 <code>round02_thresholds_v01.json</code>으로 저장합니다.",
+            direction: "S2C",
+            packetType: "CALIBRATION_FINISHED",
+            packetRole: "캘리브레이션 종료 통보 (Server &rarr; Client)",
+            json: {
+              "type": "CALIBRATION_FINISHED",
+              "player_id": "0000",
+              "thresholds": {
+                "left": { "start_val": 0.82, "target_val": 0.61, "metric_type": "COORDINATE" },
+                "right": { "start_val": 0.81, "target_val": 0.60, "metric_type": "COORDINATE" }
+              },
+              "summary": {
+                "status": "COMPLETED",
+                "calibration_file": "round02_thresholds_v01.json"
+              }
+            },
+            notes: [
+              "<strong>start_val 0.82 / target_val 0.61:</strong> 이제 본측정에서는 종아리 길이를 안 재고, 이 고정 영상 Y 좌표를 기준으로 100% 범위를 잡습니다.",
+              "<strong>종료 주체:</strong> 캘리브레이션은 <strong>서버가 스스로 종료</strong>를 통보합니다. 소켓은 유지되며 바로 MAIN으로 이어질 수 있습니다."
+            ],
+            ui: { mode: "FINISHED", leftVal: "3 / 3 회 (완료)", rightVal: "3 / 3 회 (완료)", leftPct: "100%", rightPct: "100%", btnStart: "MAIN 준비완료", startClass: "bg-sky-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "0.0 FPS", fsm: "FINISHED", thVer: "ver 0", startVal: "0.82 (저장)", targetVal: "0.61 (저장)", logStatus: "FLUSHED" }
+          }
+        ]
+      },
+
+      // 2: Main Measurement & 3-Tier Quality
+      {
+        id: 2,
+        title: "상황 3: 본측정(MAIN)과 최고점 턴어라운드 및 3등급 점수 산정",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: START MAIN",
+            phaseTitle: "방금 생성된 캘리브레이션 기준 바인딩 및 본측정 시작",
+            phaseDesc: "클라이언트가 목표 20회(20.0점)를 입력하고 MAIN 세션을 요청합니다. 서버는 환자/날짜/동작/라운드가 일치하는 최신 JSON(v01)을 자동 바인딩합니다.",
+            direction: "C2S",
+            packetType: "CMD_SET_SESSION",
+            packetRole: "본측정 개시 요청 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_SET_SESSION",
+              "patient_id": "0000",
+              "exercise_name": "knee_extension",
+              "mode": "MAIN",
+              "round": 2,
+              "set": 1,
+              "target_reps": 20,
+              "target_score": 20.0,
+              "camera_index": 0,
+              "preparation_seconds": 5
+            },
+            notes: [
+              "<strong>엄격한 바인딩 규칙:</strong> 날짜나 라운드가 다른 과거의 캘리브레이션 기준은 자동 대체되지 않습니다.",
+              "본측정 종료는 <strong>클라이언트 책임</strong>입니다. 서버에 target_reps를 보냈다고 서버가 알아서 끊어주지 않습니다."
+            ],
+            ui: { mode: "MAIN", leftVal: "0 / 20 회 (0.0점)", rightVal: "0 / 20 회 (0.0점)", leftPct: "0%", rightPct: "0%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "READY", thVer: "ver 0", startVal: "0.82 (좌)", targetVal: "0.61 (좌)", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 2: REALTIME POSE",
+            phaseTitle: "고주파 실시간 영상 Y 좌표 및 진행률 스트리밍",
+            phaseDesc: "발목이 올라감에 따라 영상 Y 좌표가 0.82에서 0.63까지 줄어듭니다(상승). 진행 바는 <code>(start_val - val) / (start_val - target_val)</code>로 90% 차오릅니다.",
+            direction: "S2C",
+            packetType: "POSE_UPDATE",
+            packetRole: "실시간 포즈 스트림 (Server &rarr; Client)",
+            json: {
+              "type": "POSE_UPDATE",
+              "mode": "MAIN",
+              "fps": 30.0,
+              "left": {
+                "val": 0.63,
+                "rep_count": 0,
+                "state": "PUSHING",
+                "quality": "PERFECT",
+                "score": 0,
+                "score_delta": 0.0,
+                "total_score": 0.0,
+                "progress_ratio": 0.90,
+                "is_count_updated": false
+              },
+              "right": { "val": 0.80, "rep_count": 0, "state": "READY", "progress_ratio": 0.05 },
+              "is_occluded": false,
+              "threshold_version": 0
+            },
+            notes: [
+              "<strong>is_count_updated: false:</strong> 아직 정점에서 내려오지 않았으므로 횟수는 올라가지 않습니다.",
+              "<strong>progress_ratio 0.90:</strong> 개인 기준선 대비 90% 가동 범위에 도달했습니다(70% 이상이므로 등급은 Perfect 대기)."
+            ],
+            ui: { mode: "MAIN", leftVal: "0 / 20 회 (진행 90%)", rightVal: "0 / 20 회 (대기)", leftPct: "90%", rightPct: "5%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "PUSHING", thVer: "ver 0", startVal: "0.82", targetVal: "0.61", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 3: PEAK REVERSAL",
+            phaseTitle: "최고점 찍고 5% 반전(Turnaround) 순간 횟수/점수 확정!",
+            phaseDesc: "발목이 최고점을 찍고 5% 이상 내려오는 순간 FSM이 `RETURNING`으로 전이되며 단발성 `REP_COMPLETED` 트랜잭션을 발행합니다.",
+            direction: "S2C",
+            packetType: "REP_COMPLETED",
+            packetRole: "반복 완수 이벤트 트랜잭션 (Server &rarr; Client)",
+            json: {
+              "type": "REP_COMPLETED",
+              "session_id": "20261028-091000-0000",
+              "exercise_name": "knee_extension",
+              "mode": "MAIN",
+              "side": "left",
+              "rep_id": 1,
+              "quality": "PERFECT",
+              "score": 3,
+              "score_delta": 1.0,
+              "total_score": 1.0,
+              "threshold_version": 0,
+              "timestamp": 8.42,
+              "val": 0.64
+            },
+            notes: [
+              "<strong>score=3:</strong> 3점이 아닙니다! 등급 식별 코드입니다(1=Normal, 2=Good, 3=Perfect).",
+              "<strong>score_delta: 1.0:</strong> 이번 반복으로 획득한 실제 점수입니다.",
+              "<strong>total_score: 1.0:</strong> 서버 내부 누적값이므로 클라이언트가 프레임마다 더하면 안 됩니다."
+            ],
+            ui: { mode: "MAIN", leftVal: "1 / 20 회 (Perfect +1.0점)", rightVal: "0 / 20 회", leftPct: "50%", rightPct: "5%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "RETURNING", thVer: "ver 0", startVal: "0.82", targetVal: "0.61", logStatus: "RECORDING" }
+          }
+        ]
+      },
+
+      // 3: Realtime Threshold Dynamic Update (★ Highlight)
+      {
+        id: 3,
+        title: "상황 4: 런타임 기준값(Threshold) 실시간 조회 및 동적 수정",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: QUERY THRESHOLD",
+            phaseTitle: "현재 활성 세션의 실시간 기준선 조회",
+            phaseDesc: "환자가 피로를 호소하자 치료사가 현재 적용 중인 기준선을 확인하기 위해 `CMD_GET_COUNT_THRESHOLD`를 보냅니다.",
+            direction: "C2S",
+            packetType: "CMD_GET_COUNT_THRESHOLD",
+            packetRole: "기준선 조회 질의 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_GET_COUNT_THRESHOLD",
+              "exercise_name": "knee_extension",
+              "request_id": "req-th-001"
+            },
+            notes: [
+              "세션 진행 중에만 조회 가능하며, 없는 세션에 요청 시 `NO_ACTIVE_SESSION` 오류가 납니다."
+            ],
+            ui: { mode: "MAIN", leftVal: "12 / 20 회 (12.0점)", rightVal: "11 / 20 회 (11.0점)", leftPct: "60%", rightPct: "55%", btnStart: "기준선 조회중", startClass: "bg-amber-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "ACTIVE", thVer: "ver 0", startVal: "0.82", targetVal: "0.61", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 2: THRESHOLD STATUS",
+            phaseTitle: "현재 기준값 및 UI 표시 범위 회신",
+            phaseDesc: "서버가 현재 적용 중인 `threshold_version: 0`과 좌측 목표선 `0.61`을 회신합니다.",
+            direction: "S2C",
+            packetType: "COUNT_THRESHOLD_STATUS",
+            packetRole: "기준선 상태 응답 (Server &rarr; Client)",
+            json: {
+              "type": "COUNT_THRESHOLD_STATUS",
+              "request_id": "req-th-001",
+              "threshold_version": 0,
+              "exercise_name": "knee_extension",
+              "thresholds": {
+                "left": { "start_val": 0.82, "target_val": 0.61 },
+                "right": { "start_val": 0.81, "target_val": 0.60 }
+              },
+              "display_thresholds": {
+                "left": { "min_val": 0.61, "max_val": 0.82 }
+              }
+            },
+            notes: [
+              "UI의 진행 바는 매번 튀는 내부 극값이 아니라 `display_thresholds`를 기준으로 고정되어 표시됩니다."
+            ],
+            ui: { mode: "MAIN", leftVal: "12 / 20 회 (12.0점)", rightVal: "11 / 20 회 (11.0점)", leftPct: "60%", rightPct: "55%", btnStart: "기준선 수신됨", startClass: "bg-amber-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "ACTIVE", thVer: "ver 0", startVal: "0.82", targetVal: "0.61", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 3: UPDATE COMMAND",
+            phaseTitle: "실시간 난이도 완화 명령 전송 (목표 Y: 0.61 &rarr; 0.68)",
+            phaseDesc: "치료사가 좌측 목표선을 0.61에서 0.68로 낮추어(영상이 아래쪽이 +Y이므로 높이가 낮아짐) 환자의 부담을 덜어줍니다.",
+            direction: "C2S",
+            packetType: "CMD_UPDATE_COUNT_THRESHOLD",
+            packetRole: "기준값 동적 수정 명령 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_UPDATE_COUNT_THRESHOLD",
+              "exercise_name": "knee_extension",
+              "request_id": "req-th-002",
+              "thresholds": {
+                "left": {
+                  "start_val": 0.82,
+                  "target_val": 0.68
+                }
+              }
+            },
+            notes: [
+              "<strong>MAIN 모드 전용:</strong> CAL 중에는 수정할 수 없으며 `INVALID_MODE` 에러가 납니다.",
+              "<strong>방향성 검증:</strong> 무릎 신전은 감소 방향이므로 `start_val > target_val` 규칙을 반드시 유지해야 합니다."
+            ],
+            ui: { mode: "MAIN", leftVal: "12 / 20 회 (수정 전송)", rightVal: "11 / 20 회", leftPct: "60%", rightPct: "55%", btnStart: "수정 적용 요청", startClass: "bg-purple-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "UPDATING", thVer: "ver 0 -> 1", startVal: "0.82", targetVal: "0.68 (검증중)", logStatus: "RECORDING" }
+          },
+          {
+            phaseBadge: "PHASE 4: UPDATED & VERSION BUMP",
+            phaseTitle: "버전 증분(ver 1) 발급 및 세션 한정 즉시 적용",
+            phaseDesc: "서버가 기준선을 즉시 갱신하고 `threshold_version: 1`을 발급했습니다. **디스크의 원본 JSON 파일은 전혀 건드리지 않고** 로그에만 새 버전으로 기록됩니다.",
+            direction: "S2C",
+            packetType: "COUNT_THRESHOLD_UPDATED",
+            packetRole: "수정 확정 통보 (Server &rarr; Client)",
+            json: {
+              "type": "COUNT_THRESHOLD_UPDATED",
+              "request_id": "req-th-002",
+              "exercise_name": "knee_extension",
+              "changed_sides": ["left"],
+              "threshold_version": 1,
+              "scope": "SESSION",
+              "thresholds": {
+                "left": { "start_val": 0.82, "target_val": 0.68 },
+                "right": { "start_val": 0.81, "target_val": 0.60 }
+              }
+            },
+            notes: [
+              "<strong>기존 점수 보존:</strong> 이미 카운트된 12회 및 점수는 그대로 유지됩니다.",
+              "<strong>CSV/NPZ 반영:</strong> 다음 프레임부터 `threshold_version: 1` 열에 기록되어 사후 그래프에서 계단식 기준선 변화로 확인 가능합니다."
+            ],
+            ui: { mode: "MAIN (ver 1)", leftVal: "12 / 20 회 (완화 적용)", rightVal: "11 / 20 회", leftPct: "75%", rightPct: "55%", btnStart: "측정 진행중", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "ACTIVE", thVer: "ver 1 ★", startVal: "0.82", targetVal: "0.68 (좌)", logStatus: "RECORDING" }
+          }
+        ]
+      },
+
+      // 4: Session Termination & Target Reached
+      {
+        id: 4,
+        title: "상황 5: 목표 도달에 따른 정상 종료 및 3종 파일 저장 마감",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: CLIENT STOP COMMAND",
+            phaseTitle: "양측 목표 도달 감지 후 클라이언트 종료 명령 송신",
+            phaseDesc: "좌우 모두 20회(20.0점)를 달성한 것을 Streamlit이 확인하고 `reason: TARGET_REACHED`를 담아 종료 명령을 보냅니다.",
+            direction: "C2S",
+            packetType: "CMD_STOP_SESSION",
+            packetRole: "세션 정지 명령 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_STOP_SESSION",
+              "session_id": "20261028-091000-0000",
+              "request_id": "stop-001",
+              "reason": "TARGET_REACHED",
+              "client_result": {
+                "target_score": 20.0,
+                "scores": { "left": 20.0, "right": 20.0 }
+              }
+            },
+            notes: [
+              "<strong>TARGET_REACHED 사유:</strong> 이 사유가 전송되어야 서버가 최종 상태를 `COMPLETED`로 기록합니다.",
+              "<strong>client_result:</strong> 클라이언트 대시보드가 집계한 최종 점수가 로그 메타데이터에 함께 박제됩니다."
+            ],
+            ui: { mode: "STOPPING", leftVal: "20 / 20 회 (20.0점)", rightVal: "20 / 20 회 (20.0점)", leftPct: "100%", rightPct: "100%", btnStart: "마감 처리중...", startClass: "bg-amber-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "30.0 FPS", fsm: "FLUSHING", thVer: "ver 1", startVal: "0.82", targetVal: "0.68", logStatus: "FINALIZING" }
+          },
+          {
+            phaseBadge: "PHASE 2: SESSION FINISHED",
+            phaseTitle: "MP4/CSV/NPZ 3종 파일 플러시 및 세션 정리 완료",
+            phaseDesc: "서버가 카메라 캡처 스레드를 닫고, 메모리 버퍼를 CSV, NPZ, MP4 파일로 디스크에 플러시한 뒤 완료 요약을 회신합니다.",
+            direction: "S2C",
+            packetType: "SESSION_FINISHED",
+            packetRole: "종료 및 파일 저장 완료 통보 (Server &rarr; Client)",
+            json: {
+              "type": "SESSION_FINISHED",
+              "session_id": "20261028-091000-0000",
+              "request_id": "stop-001",
+              "status": "COMPLETED",
+              "reason": "TARGET_REACHED",
+              "summary": {
+                "status": "COMPLETED",
+                "total_reps_left": 20,
+                "total_reps_right": 20,
+                "files": {
+                  "mp4": "09-10-00_MAIN_round02_set01.mp4",
+                  "csv": "09-10-00_MAIN_round02_set01.csv",
+                  "npz": "09-10-00_MAIN_round02_set01.npz"
+                }
+              }
+            },
+            notes: [
+              "<strong>status: COMPLETED:</strong> 목표 달성 마감 성공.",
+              "이제 Streamlit의 '로그 분석' 탭에서 방금 생성된 NPZ와 MP4를 열어 오버레이 영상을 합성할 수 있습니다."
+            ],
+            ui: { mode: "COMPLETED", leftVal: "완료 (20.0점)", rightVal: "완료 (20.0점)", leftPct: "100%", rightPct: "100%", btnStart: "측정 완료됨", startClass: "bg-slate-700 text-slate-300" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "0.0 FPS", fsm: "IDLE", thVer: "ver 1", startVal: "-", targetVal: "-", logStatus: "CLOSED & SAVED" }
+          }
+        ]
+      },
+
+      // 5: Conflict & Reset (SERVER_BUSY & CMD_RESET_SESSION)
+      {
+        id: 5,
+        title: "상황 6: 통신 단선 고착(SERVER_BUSY) 및 독립 소켓 강제 복구 (CMD_RESET_SESSION)",
+        steps: [
+          {
+            phaseBadge: "PHASE 1: CONFLICT REJECTION",
+            phaseTitle: "이전 비정상 연결 잔류로 인한 SERVER_BUSY 거절",
+            phaseDesc: "이전 브라우저 탭이 강제 종료되었으나 서버 내부 소유권(`_session_owner`)이 남아있어 새 연결의 시작 요청이 거절됩니다.",
+            direction: "S2C",
+            packetType: "ERROR",
+            packetRole: "세션 점유 거절 에러 (Server &rarr; Client)",
+            json: {
+              "type": "ERROR",
+              "code": "SERVER_BUSY",
+              "message": "다른 연결에서 세션을 사용 중입니다."
+            },
+            notes: [
+              "본 서버는 동시 다중 환자 측정을 지원하지 않는 <strong>단일 세션 독점 구조</strong>입니다.",
+              "서버 프로세스를 재부팅하지 않고 복구하려면 리셋 명령을 전송해야 합니다."
+            ],
+            ui: { mode: "ERROR", leftVal: "점유 에러 발생", rightVal: "점유 에러 발생", leftPct: "0%", rightPct: "0%", btnStart: "서버 사용중", startClass: "bg-red-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "0.0 FPS", fsm: "LOCKED", thVer: "ver 0", startVal: "GHOST_LOCK", targetVal: "GHOST_LOCK", logStatus: "LOCKED" }
+          },
+          {
+            phaseBadge: "PHASE 2: RESET COMMAND",
+            phaseTitle: "별도 감시 연결에서 세션 강제 초기화 명령 송신",
+            phaseDesc: "새로 연결된 소켓에서 `CMD_RESET_SESSION`을 호출하여 유령 세션을 강제 축출합니다.",
+            direction: "C2S",
+            packetType: "CMD_RESET_SESSION",
+            packetRole: "강제 리셋 요청 (Client &rarr; Server)",
+            json: {
+              "type": "CMD_RESET_SESSION",
+              "request_id": "reset-001"
+            },
+            notes: [
+              "<strong>감시 소켓 규칙:</strong> 세션을 점유했던 당사자 연결에서 리셋을 부르면 `RESET_FROM_MONITOR_REQUIRED` 오류가 납니다. 반드시 제3의 새 연결에서 호출해야 합니다."
+            ],
+            ui: { mode: "RESETTING", leftVal: "리셋 명령 전송", rightVal: "정리 대기중", leftPct: "0%", rightPct: "0%", btnStart: "복구 진행중", startClass: "bg-amber-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "0.0 FPS", fsm: "PURGING", thVer: "ver 0", startVal: "PURGING", targetVal: "PURGING", logStatus: "CLEANING" }
+          },
+          {
+            phaseBadge: "PHASE 3: RECOVERY SUCCESS",
+            phaseTitle: "소유권 회수 및 정상 재가동 확인",
+            phaseDesc: "서버가 이전 연결을 닫고 리소스를 정리했습니다. `SERVER_SESSION_RESET`이 반환되어 즉시 새 측정을 시작할 수 있습니다.",
+            direction: "S2C",
+            packetType: "SERVER_SESSION_RESET",
+            packetRole: "리셋 완료 통보 (Server &rarr; Client)",
+            json: {
+              "type": "SERVER_SESSION_RESET",
+              "reset": true,
+              "request_id": "reset-001",
+              "message": "이전 세션 연결 정리를 완료했습니다."
+            },
+            notes: [
+              "<strong>reset: true:</strong> 이전 연결이 정상 강제 종료되었음을 뜻합니다.",
+              "서버 재부팅 없이 이제 즉시 `CMD_SET_SESSION`을 보내 측정할 수 있습니다."
+            ],
+            ui: { mode: "IDLE (정상)", leftVal: "0 / 0 회", rightVal: "0 / 0 회", leftPct: "0%", rightPct: "0%", btnStart: "측정 시작 가능", startClass: "bg-emerald-600 text-white" },
+            srv: { modelState: "READY (GPU CUDA)", fps: "0.0 FPS", fsm: "IDLE", thVer: "ver 0", startVal: "-", targetVal: "-", logStatus: "READY" }
+          }
+        ]
+      }
+    ];
+
+    // Current State
+    let currentScenarioIdx = 0;
+    let currentStepIdx = 0;
+    let isAutoPlaying = false;
+    let autoPlayTimer = null;
+
+    // Render Function
+    function render() {
+      const scenario = SCENARIOS[currentScenarioIdx];
+      const step = scenario.steps[currentStepIdx];
+
+      // Update Top Banners
+      document.getElementById('phase-badge').innerText = step.phaseBadge;
+      document.getElementById('phase-title').innerText = step.phaseTitle;
+      document.getElementById('phase-desc').innerHTML = step.phaseDesc;
+      document.getElementById('step-counter').innerText = `STEP ${currentStepIdx + 1} / ${scenario.steps.length}`;
+
+      // Update Scenario Buttons UI
+      SCENARIOS.forEach((sc, idx) => {
+        const btn = document.getElementById(`sc-btn-${idx}`);
+        if (btn) {
+          if (idx === currentScenarioIdx) {
+            btn.className = "sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-sky-400 bg-sky-950/70 border border-sky-700/50";
+          } else {
+            btn.className = "sc-btn px-2.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white";
+          }
+        }
+      });
+
+      // Update Prev / Next Button States
+      document.getElementById('btn-prev').disabled = (currentStepIdx === 0);
+      document.getElementById('btn-next').disabled = (currentStepIdx === scenario.steps.length - 1);
+
+      // Update Highway Animation & Direction Text
+      const transferDirText = document.getElementById('transfer-dir-text');
+      const particle = document.getElementById('transfer-particle');
+      
+      if (step.direction === "C2S") {
+        transferDirText.innerHTML = '<i class="fa-solid fa-arrow-right text-sky-400"></i> CLIENT &rarr; SERVER (Request)';
+        transferDirText.className = "text-[11px] font-mono font-bold tracking-wider uppercase mb-1 flex items-center gap-1.5 text-sky-400";
+        particle.className = "w-6 h-6 rounded-full bg-sky-500/80 border border-white/80 shadow-lg shadow-sky-500/50 flex items-center justify-center text-[9px] text-white absolute left-0 packet-flying-right";
+      } else {
+        transferDirText.innerHTML = '<i class="fa-solid fa-arrow-left text-emerald-400"></i> SERVER &rarr; CLIENT (Response/Stream)';
+        transferDirText.className = "text-[11px] font-mono font-bold tracking-wider uppercase mb-1 flex items-center gap-1.5 text-emerald-400";
+        particle.className = "w-6 h-6 rounded-full bg-emerald-500/80 border border-white/80 shadow-lg shadow-emerald-500/50 flex items-center justify-center text-[9px] text-white absolute right-0 packet-flying-left";
+      }
+
+      // Update JSON Viewer
+      document.getElementById('packet-type-badge').innerText = step.packetType;
+      document.getElementById('packet-dir-badge').innerText = step.packetRole;
+      document.getElementById('json-code-display').innerHTML = syntaxHighlight(step.json);
+
+      // Update Field Notes
+      const notesContainer = document.getElementById('field-notes');
+      notesContainer.innerHTML = step.notes.map(n => `<div class="flex items-start gap-1.5"><span class="text-sky-400">•</span><span>${n}</span></div>`).join('');
+
+      // Update Left Column (Streamlit UI Mock)
+      document.getElementById('ui-mode-badge').innerText = step.ui.mode;
+      document.getElementById('ui-left-val').innerText = step.ui.leftVal;
+      document.getElementById('ui-right-val').innerText = step.ui.rightVal;
+      document.getElementById('ui-left-bar').style.width = step.ui.leftPct;
+      document.getElementById('ui-right-bar').style.width = step.ui.rightPct;
+      
+      const btnStart = document.getElementById('ui-btn-start');
+      btnStart.innerText = step.ui.btnStart;
+      btnStart.className = `flex-1 py-2 rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition ${step.ui.startClass}`;
+
+      // Update Right Column (Socket Server Mock)
+      document.getElementById('srv-model-state').innerText = step.srv.modelState;
+      document.getElementById('srv-fps').innerText = step.srv.fps;
+      document.getElementById('srv-fsm-state').innerText = step.srv.fsm;
+      document.getElementById('srv-th-version').innerText = step.srv.thVer;
+      document.getElementById('srv-start-val').innerText = step.srv.startVal;
+      document.getElementById('srv-target-val').innerText = step.srv.targetVal;
+      document.getElementById('srv-log-status').innerText = step.srv.logStatus;
+    }
+
+    // Syntax Highlighter Helper
+    function syntaxHighlight(json) {
+      if (typeof json !== 'string') {
+        json = JSON.stringify(json, undefined, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-num';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+          } else {
+            cls = 'json-str';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-bool';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
+    // Copy Current JSON
+    function copyCurrentJSON() {
+      const step = SCENARIOS[currentScenarioIdx].steps[currentStepIdx];
+      const text = JSON.stringify(step.json, null, 2);
+      
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+        alert("JSON 페이로드가 클립보드에 복사되었습니다!");
+      } catch (err) {
+        console.error('Copy failed', err);
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+
+    // Controls
+    function setScenario(idx) {
+      currentScenarioIdx = idx;
+      currentStepIdx = 0;
+      render();
+    }
+
+    function nextStep() {
+      const sc = SCENARIOS[currentScenarioIdx];
+      if (currentStepIdx < sc.steps.length - 1) {
+        currentStepIdx++;
+        render();
+      } else if (isAutoPlaying) {
+        // Next scenario
+        currentScenarioIdx = (currentScenarioIdx + 1) % SCENARIOS.length;
+        currentStepIdx = 0;
+        render();
+      }
+    }
+
+    function prevStep() {
+      if (currentStepIdx > 0) {
+        currentStepIdx--;
+        render();
+      }
+    }
+
+    function toggleAutoPlay() {
+      isAutoPlaying = !isAutoPlaying;
+      const icon = document.getElementById('icon-play');
+      if (isAutoPlaying) {
+        icon.className = "fa-solid fa-pause text-amber-400";
+        autoPlayTimer = setInterval(nextStep, 3000);
+      } else {
+        icon.className = "fa-solid fa-play";
+        clearInterval(autoPlayTimer);
+      }
+    }
+
+    // Keyboard Arrow Key Support
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') nextStep();
+      if (e.key === 'ArrowLeft') prevStep();
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      render();
+    });
+  </script>
+</body>
+</html>
