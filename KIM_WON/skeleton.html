@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sapiens COCO23 Score Threshold Viewer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #11161d; color: #e6edf3; display: flex; height: 100vh; overflow: hidden;
+  }
+  .sidebar {
+    width: 340px; min-width: 320px; background: #161b22; border-right: 1px solid #30363d;
+    padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;
+  }
+  h2 { margin: 0; font-size: 16px; color: #58a6ff; }
+  .card {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  select, button {
+    background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+    border-radius: 6px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+  }
+  button:hover { background: #30363d; }
+  button.active { background: #1f6feb; border-color: #388bfd; }
+  input[type="range"] { width: 100%; accent-color: #58a6ff; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .presets button { flex: 1 1 30%; font-size: 12px; padding: 4px 6px; }
+  .stat { font-size: 13px; line-height: 1.5; }
+  .badge-keep { color: #3fb950; font-weight: 600; }
+  .badge-drop { color: #f85149; font-weight: 600; }
+  .kpt-list { max-height: 250px; overflow-y: auto; font-size: 12px; margin-top: 6px; }
+  .kpt-item {
+    display: flex; justify-content: space-between; padding: 3px 6px; border-radius: 4px;
+  }
+  .kpt-item:nth-child(odd) { background: #161b22; }
+  .viewer {
+    flex: 1; position: relative; overflow: hidden; background: #0a0d12;
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas { cursor: grab; display: block; }
+  canvas:active { cursor: grabbing; }
+  .toolbar {
+    position: absolute; top: 12px; left: 12px; z-index: 10;
+    background: rgba(22, 27, 34, 0.88); border: 1px solid #30363d;
+    border-radius: 8px; padding: 6px 10px; display: flex; gap: 8px; align-items: center;
+    font-size: 12px;
+  }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 20; display: none;
+    background: rgba(13, 17, 23, 0.94); border: 1px solid #58a6ff; border-radius: 6px;
+    padding: 5px 9px; font-size: 12px; color: #f0f6fc; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+  }
+  label.chk { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Sapiens Score Threshold Viewer</h2>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;">
+        <button id="prevBtn">◀ 이전</button>
+        <span id="idxLabel" style="font-size:13px;font-weight:600;">1 / 1</span>
+        <button id="nextBtn">다음 ▶</button>
+      </div>
+      <select id="imgSelect" style="width:100%;"></select>
+      <div id="imgMeta" style="font-size:11px;color:#8b949e;margin-top:6px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <span style="font-size:13px;font-weight:600;">Confidence Threshold</span>
+        <input id="threshInput" type="number" min="0" max="1" step="0.01" value="0.25"
+               style="width:76px;background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:4px 8px;font-size:14px;font-weight:700;text-align:right;" />
+      </div>
+      <input id="threshSlider" type="range" min="0" max="1" step="0.01" value="0.25" style="margin-top:8px;" />
+      <div class="presets">
+        <button data-th="0.15">0.15</button>
+        <button data-th="0.20">0.20</button>
+        <button data-th="0.25" class="active">0.25</button>
+        <button data-th="0.30">0.30</button>
+        <button data-th="0.40">0.40</button>
+        <button data-th="0.50">0.50</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="showDropped" checked /> Threshold 미만 빨간 X로 표시</label>
+      <label class="chk"><input type="checkbox" id="showLabels" checked /> 관절 번호 / Score 라벨 표시</label>
+      <label class="chk"><input type="checkbox" id="showSkeleton" checked /> 스켈레톤 연결선 표시</label>
+    </div>
+
+    <div class="card stat">
+      <div>유지(Kept): <span id="keptCnt" class="badge-keep">0</span> / 23</div>
+      <div>제외(Dropped): <span id="dropCnt" class="badge-drop">0</span> / 23</div>
+      <div style="font-size:11px;color:#8b949e;margin-top:4px;">0.50 미만 관절 목록:</div>
+      <div id="lowKptList" class="kpt-list"></div>
+    </div>
+  </div>
+
+  <div class="viewer" id="viewerBox">
+    <div class="toolbar">
+      <button id="zoomOutBtn">-</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomInBtn">+</button>
+      <button id="resetZoomBtn">화면에 맞추기</button>
+      <span style="color:#8b949e;">마우스 휠: 확대/축소 | 드래그: 이동 | ←/→: 이미지 전환</span>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="tooltip" class="tooltip"></div>
+  </div>
+
+<script>
+const SAMPLES = [{"title": "lateral__hip_flexion_extension_chair (f179)", "band": "0.30-0.50", "common_path": "AI_dataset/N08/N08_Treatment/lateral__hip_flexion_extension_chair", "frame_idx": 179, "img_rel": "img/00_0.30-0.50_lateral__hip_flexion_extension_chair_f00179.jpg", "kpts23": [[647.4229736328125, 284.93798828125, 0.9769999980926514], [641.3870239257812, 277.9179992675781, 0.984000027179718], [639.7860107421875, 278.9159851074219, 1.0110000371932983], [620.5230102539062, 287.9630126953125, 0.8790000081062317], [618.6710205078125, 290.57598876953125, 0.9860000014305115], [628.3560180664062, 333.7879943847656, 0.6859999895095825], [616.2000122070312, 343.50799560546875, 0.8550000190734863], [637.7839965820312, 384.17999267578125, 0.7409999966621399], [624.2579956054688, 408.3559875488281, 0.9459999799728394], [673.2030029296875, 387.24798583984375, 0.9679999947547913], [680.6710205078125, 404.69000244140625, 0.9890000224113464], [644.9749755859375, 429.82598876953125, 0.49900001287460327], [642.4219970703125, 439.8450012207031, 0.6359999775886536], [728.7739868164062, 427.4750061035156, 0.7379999756813049], [725.7979736328125, 395.30499267578125, 0.8880000114440918], [724.593994140625, 514.0490112304688, 0.9089999794960022], [742.5089721679688, 485.2349853515625, 0.906000018119812], [766.8610229492188, 529.52099609375, 0.925000011920929], [762.8670043945312, 524.9669799804688, 0.8960000276565552], [715.426025390625, 528.5759887695312, 0.9089999794960022], [788.2769775390625, 478.33099365234375, 0.9419999718666077], [785.0709838867188, 488.0150146484375, 0.8999999761581421], [738.8579711914062, 502.4840087890625, 0.8989999890327454]]}, {"title": "frontal__bridge_static (f33)", "band": "0.25-0.30", "common_path": "AI_dataset/N01/N01_Ward/frontal__bridge_static", "frame_idx": 33, "img_rel": "img/01_0.25-0.30_frontal__bridge_static_f00033.jpg", "kpts23": [[401.9909973144531, 728.8330078125, 1.003999948501587], [410.2560119628906, 727.9210205078125, 0.9940000176429749], [394.2149963378906, 724.614013671875, 0.9959999918937683], [417.73699951171875, 743.2689819335938, 0.878000020980835], [381.1239929199219, 735.2319946289062, 0.8870000243186951], [427.2489929199219, 759.2100219726562, 0.6069999933242798], [364.1409912109375, 751.5880126953125, 0.675000011920929], [451.4230041503906, 784.9639892578125, 0.6639999747276306], [333.06201171875, 778.718994140625, 0.41499999165534973], [452.2200012207031, 828.1090087890625, 0.9139999747276306], [318.4739990234375, 810.4130249023438, 0.7570000290870667], [397.7640075683594, 796.4229736328125, 0.3319999873638153], [365.5190124511719, 788.7529907226562, 0.29100000858306885], [424.7139892578125, 755.7760009765625, 0.7850000262260437], [338.82598876953125, 747.9130249023438, 0.8270000219345093], [410.6570129394531, 897.1380004882812, 0.777999997138977], [323.4530029296875, 889.9600219726562, 0.8080000281333923], [403.54901123046875, 941.14697265625, 0.9580000042915344], [425.22198486328125, 935.531982421875, 0.9359999895095825], [407.20599365234375, 907.2310180664062, 0.7239999771118164], [314.9169921875, 928.0189819335938, 0.9229999780654907], [296.75299072265625, 918.0650024414062, 0.9409999847412109], [325.10101318359375, 900.6950073242188, 0.6890000104904175]]}, {"title": "frontal__curl_up__1 (f114)", "band": "0.30-0.50", "common_path": "sample_data/ICU_sample_video/frontal__curl_up__1", "frame_idx": 114, "img_rel": "img/02_0.30-0.50_frontal__curl_up__1_f00114.jpg", "kpts23": [[646.9559936523438, 372.7959899902344, 0.9919999837875366], [656.8389892578125, 364.71099853515625, 1.0260000228881836], [637.8040161132812, 364.7090148925781, 1.0099999904632568], [669.593017578125, 376.3699951171875, 0.9670000076293945], [623.739013671875, 375.2340087890625, 0.9390000104904175], [691.6400146484375, 412.7380065917969, 0.8360000252723694], [602.6069946289062, 415.4729919433594, 0.824999988079071], [735.5800170898438, 369.8340148925781, 0.9490000009536743], [554.176025390625, 374.22198486328125, 0.949999988079071], [676.0490112304688, 365.7900085449219, 0.9660000205039978], [613.0250244140625, 367.1390075683594, 0.9700000286102295], [675.530029296875, 514.7369995117188, 0.6819999814033508], [623.0549926757812, 513.9970092773438, 0.7160000205039978], [679.3099975585938, 570.4299926757812, 0.6679999828338623], [612.4520263671875, 562.2219848632812, 0.6549999713897705], [682.4199829101562, 674.4829711914062, 0.6340000033378601], [603.551025390625, 672.2349853515625, 0.7699999809265137], [675.9169921875, 695.9979858398438, 0.49300000071525574], [694.2230224609375, 695.7620239257812, 0.5], [679.4619750976562, 690.2030029296875, 0.5889999866485596], [611.6370239257812, 694.5079956054688, 0.49399998784065247], [590.6370239257812, 692.7169799804688, 0.5329999923706055], [604.3619995117188, 685.8980102539062, 0.6460000276565552]]}, {"title": "diagonal__leg_cycle_exercise (f125)", "band": "0.20-0.25", "common_path": "AI_dataset/N05/N05_Ward/diagonal__leg_cycle_exercise", "frame_idx": 125, "img_rel": "img/03_0.20-0.25_diagonal__leg_cycle_exercise_f00125.jpg", "kpts23": [[426.90301513671875, 298.4159851074219, 1.00600004196167], [429.4129943847656, 291.6990051269531, 0.9769999980926514], [415.2040100097656, 301.34600830078125, 1.0080000162124634], [445.1679992675781, 298.7380065917969, 0.8920000195503235], [409.9679870605469, 329.8689880371094, 0.9909999966621399], [478.77099609375, 319.1600036621094, 0.8190000057220459], [415.2669982910156, 356.12200927734375, 0.9020000100135803], [541.666015625, 344.97100830078125, 0.6290000081062317], [424.9960021972656, 411.58099365234375, 0.8809999823570251], [623.676025390625, 381.15399169921875, 0.23999999463558197], [470.6940002441406, 438.66400146484375, 0.9679999947547913], [584.9030151367188, 403.4630126953125, 0.6510000228881836], [538.405029296875, 428.9200134277344, 0.671999990940094], [648.301025390625, 323.9429931640625, 0.878000020980835], [488.8680114746094, 313.1629943847656, 0.9800000190734863], [762.4860229492188, 357.6470031738281, 0.9089999794960022], [614.6170043945312, 365.0039978027344, 0.9139999747276306], [801.4089965820312, 297.0989990234375, 0.9620000123977661], [817.5339965820312, 308.89898681640625, 1.00600004196167], [789.5969848632812, 380.0379943847656, 0.9539999961853027], [631.1959838867188, 301.5509948730469, 0.9440000057220459], [624.2319946289062, 327.8219909667969, 0.9750000238418579], [646.4650268554688, 377.4259948730469, 0.953000009059906]]}, {"title": "diagonal__bridge_dynamic (f223)", "band": "0.25-0.30", "common_path": "AI_dataset/N04/N04_Ward/diagonal__bridge_dynamic", "frame_idx": 223, "img_rel": "img/04_0.25-0.30_diagonal__bridge_dynamic_f00223.jpg", "kpts23": [[706.5980224609375, 378.9939880371094, 0.9919999837875366], [719.051025390625, 380.39801025390625, 1.0140000581741333], [705.8499755859375, 375.0169982910156, 0.9959999918937683], [726.8809814453125, 406.0249938964844, 1.003000020980835], [707.0390014648438, 386.9530029296875, 0.7490000128746033], [719.6290283203125, 426.92999267578125, 0.9419999718666077], [663.4910278320312, 392.6910095214844, 0.8050000071525574], [707.4110107421875, 469.6289978027344, 0.8579999804496765], [612.25, 404.14801025390625, 0.5180000066757202], [681.8679809570312, 510.83099365234375, 0.9850000143051147], [513.9639892578125, 450.1239929199219, 0.25600001215934753], [628.6900024414062, 423.2229919433594, 0.5960000157356262], [595.8289794921875, 400.04998779296875, 0.6620000004768372], [541.64599609375, 418.9209899902344, 0.8880000114440918], [469.5010070800781, 396.0220031738281, 0.9150000214576721], [498.93499755859375, 572.083984375, 0.9259999990463257], [442.427001953125, 542.5809936523438, 0.953000009059906], [443.635009765625, 609.3040161132812, 0.9879999756813049], [474.781005859375, 615.2509765625, 0.9570000171661377], [505.8290100097656, 590.6129760742188, 0.9599999785423279], [385.8800048828125, 577.9219970703125, 0.9850000143051147], [390.4670104980469, 567.8330078125, 0.984000027179718], [451.5169982910156, 562.625, 0.9959999918937683]]}, {"title": "diagonal__lumbar_rotation (f287)", "band": "0.20-0.25", "common_path": "AI_dataset/N02/N02_Ward/diagonal__lumbar_rotation", "frame_idx": 287, "img_rel": "img/05_0.20-0.25_diagonal__lumbar_rotation_f00287.jpg", "kpts23": [[788.1430053710938, 390.8160095214844, 0.9850000143051147], [799.1370239257812, 392.24700927734375, 0.9789999723434448], [786.7999877929688, 386.2099914550781, 0.9879999756813049], [805.635009765625, 414.9230041503906, 0.9950000047683716], [780.2369995117188, 393.5929870605469, 0.7049999833106995], [800.56298828125, 438.9070129394531, 0.8820000290870667], [740.89697265625, 414.6700134277344, 0.8199999928474426], [796.0880126953125, 475.7969970703125, 0.8809999823570251], [701.3980102539062, 431.5530090332031, 0.6800000071525574], [781.0609741210938, 503.1600036621094, 0.9649999737739563], [633.7160034179688, 452.03900146484375, 0.22599999606609344], [723.3989868164062, 482.760986328125, 0.5180000066757202], [684.905029296875, 471.1159973144531, 0.37700000405311584], [673.3839721679688, 407.70599365234375, 0.8700000047683716], [644.4929809570312, 397.31298828125, 0.8930000066757202], [629.9669799804688, 519.2979736328125, 0.9200000166893005], [619.2059936523438, 509.2969970703125, 0.9089999794960022], [583.0819702148438, 540.1380004882812, 0.9079999923706055], [603.7319946289062, 549.6939697265625, 0.9520000219345093], [636.125, 534.2059936523438, 0.9700000286102295], [584.7830200195312, 535.8170166015625, 0.8669999837875366], [580.4639892578125, 532.1240234375, 0.9559999704360962], [623.9439697265625, 521.3900146484375, 0.8330000042915344]]}, {"title": "M01_VISIT6_LowerLimb (f4835)", "band": "0.00-0.15", "common_path": "Won_Kim_research_at_Bosanjin/M01/M01_VISIT6_LowerLimb", "frame_idx": 4835, "img_rel": "img/06_0.00-0.15_M01_VISIT6_LowerLimb_f04835.jpg", "kpts23": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]}, {"title": "frontal__leg_cycle_exercise (f137)", "band": "0.00-0.15", "common_path": "AI_dataset/N03/N03_Ward/frontal__leg_cycle_exercise", "frame_idx": 137, "img_rel": "img/07_0.00-0.15_frontal__leg_cycle_exercise_f00137.jpg", "kpts23": [[335.7760009765625, 794.1129760742188, 0.9599999785423279], [343.10400390625, 791.1209716796875, 0.8410000205039978], [327.9570007324219, 790.7739868164062, 0.9909999966621399], [350.20001220703125, 795.801025390625, 0.4129999876022339], [316.1199951171875, 808.8920288085938, 0.949999988079071], [374.92999267578125, 831.4199829101562, 0.3479999899864197], [296.447998046875, 831.2319946289062, 0.6320000290870667], [399.0169982910156, 865.7109985351562, 0.35199999809265137], [268.8680114746094, 870.3090209960938, 0.5649999976158142], [362.91400146484375, 836.0579833984375, 0.12700000405311584], [299.1730041503906, 870.0819702148438, 0.1420000046491623], [362.5010070800781, 913.3209838867188, 0.35499998927116394], [316.24798583984375, 915.5599975585938, 0.33500000834465027], [365.29998779296875, 810.7559814453125, 0.1379999965429306], [303.7439880371094, 878.0499877929688, 0.0989999994635582], [355.6440124511719, 804.7630004882812, 0.5009999871253967], [315.489990234375, 870.9140014648438, 0.5740000009536743], [341.47198486328125, 773.97998046875, 0.9520000219345093], [362.2130126953125, 780.468994140625, 0.9169999957084656], [352.56298828125, 809.22900390625, 0.5820000171661377], [330.9259948730469, 825.4619750976562, 0.878000020980835], [307.24798583984375, 840.97900390625, 0.8579999804496765], [330.0249938964844, 881.52197265625, 0.828000009059906]]}, {"title": "frontal__one_leg_bridge_static (f384)", "band": "0.15-0.20", "common_path": "AI_dataset/N09/N09_Ward/frontal__one_leg_bridge_static", "frame_idx": 384, "img_rel": "img/08_0.15-0.20_frontal__one_leg_bridge_static_f00384.jpg", "kpts23": [[317.4320068359375, 676.4359741210938, 0.9890000224113464], [325.35198974609375, 675.0910034179688, 0.9760000109672546], [310.2760009765625, 675.1500244140625, 0.9869999885559082], [334.5840148925781, 693.0989990234375, 0.9359999895095825], [300.2980041503906, 693.2529907226562, 0.9229999780654907], [348.8559875488281, 711.5120239257812, 0.7720000147819519], [286.8819885253906, 711.4769897460938, 0.8920000195503235], [376.8659973144531, 750.7420043945312, 0.7919999957084656], [250.82699584960938, 751.0880126953125, 0.7120000123977661], [398.5480041503906, 776.0170288085938, 0.9449999928474426], [222.36399841308594, 778.4500122070312, 0.9520000219345093], [328.093994140625, 789.2570190429688, 0.4970000088214874], [289.7550048828125, 790.8599853515625, 0.5210000276565552], [346.67498779296875, 718.3179931640625, 0.746999979019165], [277.68701171875, 733.4530029296875, 0.19300000369548798], [340.4739990234375, 879.2369995117188, 0.8100000023841858], [272.37701416015625, 727.0009765625, 0.7770000100135803], [347.9119873046875, 928.2639770507812, 0.984000027179718], [370.2449951171875, 919.5549926757812, 0.9549999833106995], [332.45098876953125, 894.5280151367188, 0.7599999904632568], [256.6830139160156, 644.6110229492188, 0.9190000295639038], [233.08799743652344, 670.1209716796875, 0.9259999990463257], [278.10400390625, 738.6950073242188, 0.8180000185966492]]}, {"title": "frontal__hip_flexion_extension_bobath_table (f544)", "band": "0.15-0.20", "common_path": "AI_dataset/N02/N02_Treatment/frontal__hip_flexion_extension_bobath_table", "frame_idx": 544, "img_rel": "img/09_0.15-0.20_frontal__hip_flexion_extension_bobath_table_f00544.jpg", "kpts23": [[645.7979736328125, 429.53399658203125, 0.36800000071525574], [647.0679931640625, 428.66400146484375, 0.3070000112056732], [641.9400024414062, 427.4230041503906, 0.39800000190734863], [657.02001953125, 422.8699951171875, 0.28600001335144043], [639.010009765625, 426.4219970703125, 0.4339999854564667], [630.1290283203125, 428.9049987792969, 0.19499999284744263], [631.8099975585938, 429.531005859375, 0.4729999899864197], [695.4829711914062, 457.81201171875, 0.3610000014305115], [601.7449951171875, 454.8160095214844, 0.36399999260902405], [705.6489868164062, 469.1059875488281, 0.6399999856948853], [587.5150146484375, 468.2969970703125, 0.6150000095367432], [625.2269897460938, 455.63299560546875, 0.16699999570846558], [631.9390258789062, 447.1969909667969, 0.18799999356269836], [618.364013671875, 477.5790100097656, 0.39399999380111694], [618.6069946289062, 476.26300048828125, 0.3199999928474426], [626.1099853515625, 497.27899169921875, 0.4390000104904175], [672.968994140625, 425.9389953613281, 0.20800000429153442], [643.0, 493.04400634765625, 0.9190000295639038], [626.8150024414062, 510.9119873046875, 0.7960000038146973], [643.844970703125, 517.9320068359375, 0.765999972820282], [659.7880249023438, 398.5929870605469, 0.6610000133514404], [680.4299926757812, 409.656005859375, 0.5230000019073486], [673.864013671875, 425.15399169921875, 0.19599999487400055]]}];
+const NAMES = ["nose", "left_eye", "right_eye", "left_ear", "right_ear", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle", "left_big_toe", "left_small_toe", "left_heel", "right_big_toe", "right_small_toe", "right_heel"];
+const SKELETON = [[0, 1], [0, 2], [1, 3], [2, 4], [5, 6], [5, 7], [7, 9], [6, 8], [8, 10], [5, 11], [6, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [15, 17], [15, 18], [15, 19], [16, 20], [16, 21], [16, 22]];
+
+let currentIdx = 0;
+let threshold = 0.25;
+let scale = 1.0, offsetX = 0, offsetY = 0;
+let isDragging = false, dragStartX = 0, dragStartY = 0;
+let hoveredIdx = -1;
+const imgCache = {};
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const viewerBox = document.getElementById("viewerBox");
+const tooltip = document.getElementById("tooltip");
+const imgSelect = document.getElementById("imgSelect");
+const threshSlider = document.getElementById("threshSlider");
+const threshInput = document.getElementById("threshInput");
+
+SAMPLES.forEach((s, i) => {
+  const opt = document.createElement("option");
+  opt.value = i;
+  opt.textContent = `[${s.band}] ${s.title}`;
+  imgSelect.appendChild(opt);
+});
+
+function resizeCanvas() {
+  canvas.width = viewerBox.clientWidth;
+  canvas.height = viewerBox.clientHeight;
+  render();
+}
+window.addEventListener("resize", resizeCanvas);
+
+function fitToScreen(img) {
+  const sw = canvas.width / img.width;
+  const sh = canvas.height / img.height;
+  scale = Math.min(sw, sh) * 0.95;
+  offsetX = (canvas.width - img.width * scale) / 2;
+  offsetY = (canvas.height - img.height * scale) / 2;
+  document.getElementById("zoomLabel").textContent = Math.round(scale * 100) + "%";
+}
+
+function loadAndShow(idx, resetView = true) {
+  currentIdx = (idx + SAMPLES.length) % SAMPLES.length;
+  imgSelect.value = currentIdx;
+  document.getElementById("idxLabel").textContent = `${currentIdx + 1} / ${SAMPLES.length}`;
+  const s = SAMPLES[currentIdx];
+  document.getElementById("imgMeta").textContent = `${s.common_path} (frame ${s.frame_idx})`;
+
+  if (imgCache[s.img_rel]) {
+    if (resetView) fitToScreen(imgCache[s.img_rel]);
+    render();
+  } else {
+    const im = new Image();
+    im.onload = () => {
+      imgCache[s.img_rel] = im;
+      if (resetView) fitToScreen(im);
+      render();
+    };
+    im.src = s.img_rel;
+  }
+}
+
+function updateStats(kpts) {
+  let kept = 0, drop = 0;
+  const lowItems = [];
+  for (let i = 0; i < kpts.length; i++) {
+    const sc = kpts[i][2];
+    if (sc >= threshold) kept++; else drop++;
+    if (sc < 0.5) {
+      const cls = sc >= threshold ? "badge-keep" : "badge-drop";
+      lowItems.push(`<div class="kpt-item"><span>${i}. ${NAMES[i]}</span><span class="${cls}">${sc.toFixed(3)}</span></div>`);
+    }
+  }
+  document.getElementById("keptCnt").textContent = kept;
+  document.getElementById("dropCnt").textContent = drop;
+  document.getElementById("lowKptList").innerHTML = lowItems.length ? lowItems.join("") : "<div style='color:#8b949e;'>없음</div>";
+}
+
+function render() {
+  const s = SAMPLES[currentIdx];
+  const im = imgCache[s.img_rel];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!im) return;
+
+  updateStats(s.kpts23);
+  const showDropped = document.getElementById("showDropped").checked;
+  const showLabels = document.getElementById("showLabels").checked;
+  const showSkeleton = document.getElementById("showSkeleton").checked;
+
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.drawImage(im, 0, 0);
+
+  const kpts = s.kpts23;
+  if (showSkeleton) {
+    ctx.lineWidth = Math.max(1.5, 2.2 / scale);
+    for (const [i, j] of SKELETON) {
+      if (kpts[i][2] >= threshold && kpts[j][2] >= threshold) {
+        ctx.strokeStyle = (i >= 17 || j >= 17) ? "#ffa657" : "#58a6ff";
+        ctx.beginPath();
+        ctx.moveTo(kpts[i][0], kpts[i][1]);
+        ctx.lineTo(kpts[j][0], kpts[j][1]);
+        ctx.stroke();
+      }
+    }
+  }
+
+  const r = Math.max(3, 5 / scale);
+  ctx.font = `${Math.max(10, Math.round(13 / scale))}px sans-serif`;
+  for (let i = 0; i < kpts.length; i++) {
+    const [x, y, sc] = kpts[i];
+    const kept = sc >= threshold;
+    if (!kept && !showDropped) continue;
+
+    if (kept) {
+      ctx.fillStyle = (i >= 17) ? "#ff7b72" : "#3fb950";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = "#f85149";
+      ctx.lineWidth = Math.max(1.5, 2 / scale);
+      ctx.beginPath();
+      ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
+      ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r);
+      ctx.stroke();
+    }
+
+    if (showLabels && sc < 0.5) {
+      ctx.fillStyle = kept ? "#f0f6fc" : "#ff7b72";
+      ctx.fillText(`${i}:${sc.toFixed(2)}`, x + r + 3, y - 3);
+    }
+    if (i === hoveredIdx) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = Math.max(1.5, 2 / scale);
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4 / scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  document.getElementById("zoomLabel").textContent = Math.round(scale * 100) + "%";
+}
+
+function setThreshold(val) {
+  const parsed = parseFloat(val);
+  if (Number.isNaN(parsed)) return;
+  threshold = Math.max(0, Math.min(1, parsed));
+  threshSlider.value = threshold.toFixed(2);
+  if (document.activeElement !== threshInput) {
+    threshInput.value = threshold.toFixed(2);
+  }
+  document.querySelectorAll(".presets button").forEach(b => {
+    b.classList.toggle("active", Math.abs(parseFloat(b.dataset.th) - threshold) < 0.001);
+  });
+  render();
+}
+
+threshSlider.addEventListener("input", e => { threshInput.value = parseFloat(e.target.value).toFixed(2); setThreshold(e.target.value); });
+threshInput.addEventListener("input", e => setThreshold(e.target.value));
+threshInput.addEventListener("change", e => { setThreshold(e.target.value); threshInput.value = threshold.toFixed(2); });
+document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => setThreshold(b.dataset.th)));
+["showDropped", "showLabels", "showSkeleton"].forEach(id => document.getElementById(id).addEventListener("change", render));
+
+imgSelect.addEventListener("change", e => loadAndShow(parseInt(e.target.value, 10)));
+document.getElementById("prevBtn").addEventListener("click", () => loadAndShow(currentIdx - 1));
+document.getElementById("nextBtn").addEventListener("click", () => loadAndShow(currentIdx + 1));
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") loadAndShow(currentIdx - 1);
+  if (e.key === "ArrowRight") loadAndShow(currentIdx + 1);
+});
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  offsetX = mx - (mx - offsetX) * factor;
+  offsetY = my - (my - offsetY) * factor;
+  scale *= factor;
+  render();
+}, { passive: false });
+
+canvas.addEventListener("mousedown", e => { isDragging = true; dragStartX = e.clientX - offsetX; dragStartY = e.clientY - offsetY; });
+window.addEventListener("mousemove", e => {
+  if (isDragging) {
+    offsetX = e.clientX - dragStartX;
+    offsetY = e.clientY - dragStartY;
+    tooltip.style.display = "none";
+    render();
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) {
+    if (hoveredIdx !== -1) { hoveredIdx = -1; render(); }
+    tooltip.style.display = "none";
+    return;
+  }
+  const ix = (mx - offsetX) / scale;
+  const iy = (my - offsetY) / scale;
+  const kpts = SAMPLES[currentIdx].kpts23;
+  const showDropped = document.getElementById("showDropped").checked;
+  let best = -1, bestDistPx = 14;
+  for (let i = 0; i < kpts.length; i++) {
+    const [kx, ky, sc] = kpts[i];
+    if (sc < threshold && !showDropped) continue;
+    const distPx = Math.hypot(kx - ix, ky - iy) * scale;
+    if (distPx <= bestDistPx) {
+      bestDistPx = distPx;
+      best = i;
+    }
+  }
+  if (best !== hoveredIdx) {
+    hoveredIdx = best;
+    render();
+  }
+  if (best !== -1) {
+    const sc = kpts[best][2];
+    const kept = sc >= threshold;
+    tooltip.innerHTML = `<b>#${best} ${NAMES[best]}</b><br/>conf: <b>${sc.toFixed(4)}</b> <span style="color:${kept ? '#3fb950' : '#f85149'}">(${kept ? '유지' : '제외 X'})</span>`;
+    tooltip.style.left = `${mx + 14}px`;
+    tooltip.style.top = `${my + 14}px`;
+    tooltip.style.display = "block";
+  } else {
+    tooltip.style.display = "none";
+  }
+});
+canvas.addEventListener("mouseleave", () => {
+  if (hoveredIdx !== -1) { hoveredIdx = -1; render(); }
+  tooltip.style.display = "none";
+});
+window.addEventListener("mouseup", () => { isDragging = false; });
+
+document.getElementById("zoomInBtn").addEventListener("click", () => { scale *= 1.25; render(); });
+document.getElementById("zoomOutBtn").addEventListener("click", () => { scale /= 1.25; render(); });
+document.getElementById("resetZoomBtn").addEventListener("click", () => { const im = imgCache[SAMPLES[currentIdx].img_rel]; if (im) { fitToScreen(im); render(); } });
+
+resizeCanvas();
+loadAndShow(0, true);
+</script>
+</body>
+</html>

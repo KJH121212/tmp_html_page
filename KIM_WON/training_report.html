@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RTMPose-M COCO-23 Training Report</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0d1117; color: #e6edf3; line-height: 1.5;
+  }
+  .container { max-width: 1360px; margin: 0 auto; padding: 24px; }
+  header {
+    border-bottom: 1px solid #30363d; padding-bottom: 16px; margin-bottom: 24px;
+    display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px;
+  }
+  h1 { margin: 0; font-size: 24px; color: #58a6ff; }
+  .subtitle { color: #8b949e; font-size: 13px; margin-top: 4px; }
+  h2 { font-size: 17px; color: #f0f6fc; margin: 28px 0 12px; border-left: 4px solid #58a6ff; padding-left: 10px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .kpi {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px 16px;
+  }
+  .kpi .label { font-size: 12px; color: #8b949e; }
+  .kpi .value { font-size: 24px; font-weight: 700; color: #3fb950; margin-top: 4px; }
+  .kpi .sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .kpi.blue .value { color: #58a6ff; }
+  .kpi.orange .value { color: #ffa657; }
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 16px; }
+  .card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px;
+  }
+  .card h3 { margin: 0 0 10px; font-size: 14px; color: #c9d1d9; }
+  canvas.chart { width: 100%; height: 280px; display: block; background: #0d1117; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #21262d; text-align: right; }
+  th { background: #1c2128; color: #8b949e; position: sticky; top: 0; }
+  tr:hover { background: #1c2128; }
+  tr.best { background: rgba(63, 185, 80, 0.14); font-weight: 700; color: #3fb950; }
+  .table-wrap { max-height: 380px; overflow-y: auto; border: 1px solid #30363d; border-radius: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #8b949e; margin-top: 8px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+  .chart-tooltip {
+    position: fixed; pointer-events: none; z-index: 50; display: none;
+    background: rgba(13, 17, 23, 0.95); border: 1px solid #58a6ff; border-radius: 6px;
+    padding: 8px 10px; font-size: 12px; color: #f0f6fc; white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>RTMPose-M (COCO-23) Training Report</h1>
+      <div class="subtitle">Backbone: CSPNeXt-M (Pretrained Fine-tuned) + Head: RTMCCHead 23-Kpt (From-Scratch) | Log: 20261118_081221.json</div>
+    </div>
+    <div class="subtitle">Epochs: 100 | Iters: 76,287 | Max VRAM: 9,490 MiB</div>
+  </header>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <h2>1. Training & Validation Curves</h2>
+  <div class="chart-grid">
+    <div class="card">
+      <h3>Train Loss (Epoch Mean)</h3>
+      <canvas id="lossChart" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Train Pose Accuracy (acc_pose) & Learning Rate</h3>
+      <canvas id="accChart" class="chart"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:#3fb950"></span>acc_pose</span>
+        <span><span class="dot" style="background:#8b949e"></span>LR (right axis)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Validation COCO-23 Metrics (AP / AP.5 / AP.75 / AR)</h3>
+      <canvas id="valChart" class="chart"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:#f85149"></span>AP</span>
+        <span><span class="dot" style="background:#ffa657"></span>AP .5</span>
+        <span><span class="dot" style="background:#a371f7"></span>AP .75</span>
+        <span><span class="dot" style="background:#39c5cf"></span>AR</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Scale-wise Validation AP (Medium vs Large)</h3>
+      <canvas id="scaleChart" class="chart"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:#3fb950"></span>AP (Large)</span>
+        <span><span class="dot" style="background:#f778ba"></span>AP (Medium)</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>2. Epoch-by-Epoch Validation Table</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Epoch</th><th>AP</th><th>AP .5</th><th>AP .75</th><th>AP (M)</th><th>AP (L)</th><th>AR</th><th>AR .5</th><th>AR .75</th>
+        </tr>
+      </thead>
+      <tbody id="valTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="chartTooltip" class="chart-tooltip"></div>
+
+<script>
+const REPORT = {"train_summary": {"max_epoch": 100, "init_loss": 2.329692552089691, "final_loss": 0.670222, "final_acc": 0.920991, "avg_time": 0.6172265046882625, "avg_data_time": 0.03646310695330304}, "best": {"epoch": 100, "ap": 0.8915948947544033, "ap50": 0.9695248519293265, "ap75": 0.9281299110575641, "apm": 0.7106525518798437, "apl": 0.9431025185697338, "ar": 0.902298279396236}, "train_epoch": [{"epoch": 1, "loss": 1.230718, "acc_pose": 0.744241, "lr": 0.0006994}, {"epoch": 2, "loss": 0.988603, "acc_pose": 0.83515, "lr": 0.001}, {"epoch": 3, "loss": 0.950771, "acc_pose": 0.858167, "lr": 0.001}, {"epoch": 4, "loss": 0.932891, "acc_pose": 0.856966, "lr": 0.001}, {"epoch": 5, "loss": 0.920069, "acc_pose": 0.855333, "lr": 0.001}, {"epoch": 6, "loss": 0.907088, "acc_pose": 0.865183, "lr": 0.001}, {"epoch": 7, "loss": 0.901397, "acc_pose": 0.856147, "lr": 0.001}, {"epoch": 8, "loss": 0.893346, "acc_pose": 0.863839, "lr": 0.001}, {"epoch": 9, "loss": 0.88958, "acc_pose": 0.865257, "lr": 0.001}, {"epoch": 10, "loss": 0.882606, "acc_pose": 0.865623, "lr": 0.001}, {"epoch": 11, "loss": 0.879638, "acc_pose": 0.869344, "lr": 0.001}, {"epoch": 12, "loss": 0.877169, "acc_pose": 0.865841, "lr": 0.001}, {"epoch": 13, "loss": 0.871876, "acc_pose": 0.870544, "lr": 0.001}, {"epoch": 14, "loss": 0.871909, "acc_pose": 0.865461, "lr": 0.001}, {"epoch": 15, "loss": 0.866704, "acc_pose": 0.867943, "lr": 0.001}, {"epoch": 16, "loss": 0.864456, "acc_pose": 0.868051, "lr": 0.001}, {"epoch": 17, "loss": 0.862502, "acc_pose": 0.872064, "lr": 0.001}, {"epoch": 18, "loss": 0.859183, "acc_pose": 0.865601, "lr": 0.001}, {"epoch": 19, "loss": 0.859017, "acc_pose": 0.867721, "lr": 0.001}, {"epoch": 20, "loss": 0.855109, "acc_pose": 0.87007, "lr": 0.001}, {"epoch": 21, "loss": 0.854845, "acc_pose": 0.867177, "lr": 0.001}, {"epoch": 22, "loss": 0.852632, "acc_pose": 0.873711, "lr": 0.001}, {"epoch": 23, "loss": 0.851598, "acc_pose": 0.874895, "lr": 0.001}, {"epoch": 24, "loss": 0.848753, "acc_pose": 0.873358, "lr": 0.001}, {"epoch": 25, "loss": 0.849849, "acc_pose": 0.870085, "lr": 0.001}, {"epoch": 26, "loss": 0.847085, "acc_pose": 0.865998, "lr": 0.001}, {"epoch": 27, "loss": 0.845441, "acc_pose": 0.878414, "lr": 0.001}, {"epoch": 28, "loss": 0.843303, "acc_pose": 0.874567, "lr": 0.001}, {"epoch": 29, "loss": 0.843142, "acc_pose": 0.874586, "lr": 0.001}, {"epoch": 30, "loss": 0.842965, "acc_pose": 0.871349, "lr": 0.001}, {"epoch": 31, "loss": 0.841478, "acc_pose": 0.873648, "lr": 0.001}, {"epoch": 32, "loss": 0.839583, "acc_pose": 0.876683, "lr": 0.001}, {"epoch": 33, "loss": 0.839761, "acc_pose": 0.875706, "lr": 0.001}, {"epoch": 34, "loss": 0.839086, "acc_pose": 0.869036, "lr": 0.001}, {"epoch": 35, "loss": 0.836921, "acc_pose": 0.870255, "lr": 0.001}, {"epoch": 36, "loss": 0.836593, "acc_pose": 0.87651, "lr": 0.001}, {"epoch": 37, "loss": 0.836799, "acc_pose": 0.873502, "lr": 0.001}, {"epoch": 38, "loss": 0.835334, "acc_pose": 0.877613, "lr": 0.001}, {"epoch": 39, "loss": 0.833267, "acc_pose": 0.872199, "lr": 0.001}, {"epoch": 40, "loss": 0.834552, "acc_pose": 0.874083, "lr": 0.001}, {"epoch": 41, "loss": 0.833926, "acc_pose": 0.871268, "lr": 0.001}, {"epoch": 42, "loss": 0.832082, "acc_pose": 0.871936, "lr": 0.001}, {"epoch": 43, "loss": 0.831135, "acc_pose": 0.876469, "lr": 0.001}, {"epoch": 44, "loss": 0.830322, "acc_pose": 0.876241, "lr": 0.001}, {"epoch": 45, "loss": 0.830916, "acc_pose": 0.876412, "lr": 0.001}, {"epoch": 46, "loss": 0.830285, "acc_pose": 0.87229, "lr": 0.001}, {"epoch": 47, "loss": 0.829109, "acc_pose": 0.881016, "lr": 0.001}, {"epoch": 48, "loss": 0.828438, "acc_pose": 0.873874, "lr": 0.001}, {"epoch": 49, "loss": 0.828002, "acc_pose": 0.871328, "lr": 0.001}, {"epoch": 50, "loss": 0.829232, "acc_pose": 0.870944, "lr": 0.001}, {"epoch": 51, "loss": 0.829169, "acc_pose": 0.878553, "lr": 0.00099969}, {"epoch": 52, "loss": 0.826309, "acc_pose": 0.872212, "lr": 0.00099787}, {"epoch": 53, "loss": 0.823825, "acc_pose": 0.87266, "lr": 0.00099429}, {"epoch": 54, "loss": 0.825328, "acc_pose": 0.874369, "lr": 0.00098895}, {"epoch": 55, "loss": 0.8246, "acc_pose": 0.876036, "lr": 0.00098188}, {"epoch": 56, "loss": 0.823893, "acc_pose": 0.877602, "lr": 0.00097311}, {"epoch": 57, "loss": 0.82002, "acc_pose": 0.877381, "lr": 0.00096267}, {"epoch": 58, "loss": 0.818877, "acc_pose": 0.878262, "lr": 0.00095059}, {"epoch": 59, "loss": 0.817674, "acc_pose": 0.872942, "lr": 0.00093694}, {"epoch": 60, "loss": 0.815115, "acc_pose": 0.881655, "lr": 0.00092176}, {"epoch": 61, "loss": 0.812931, "acc_pose": 0.875609, "lr": 0.00090512}, {"epoch": 62, "loss": 0.809629, "acc_pose": 0.878402, "lr": 0.00088707}, {"epoch": 63, "loss": 0.808343, "acc_pose": 0.878502, "lr": 0.00086769}, {"epoch": 64, "loss": 0.806151, "acc_pose": 0.878926, "lr": 0.00084706}, {"epoch": 65, "loss": 0.803763, "acc_pose": 0.884926, "lr": 0.00082525}, {"epoch": 66, "loss": 0.799994, "acc_pose": 0.887695, "lr": 0.00080236}, {"epoch": 67, "loss": 0.798019, "acc_pose": 0.879016, "lr": 0.00077847}, {"epoch": 68, "loss": 0.793893, "acc_pose": 0.889054, "lr": 0.00075369}, {"epoch": 69, "loss": 0.791183, "acc_pose": 0.888435, "lr": 0.00072809}, {"epoch": 70, "loss": 0.786971, "acc_pose": 0.883804, "lr": 0.0007018}, {"epoch": 71, "loss": 0.783634, "acc_pose": 0.891144, "lr": 0.0006749}, {"epoch": 72, "loss": 0.780719, "acc_pose": 0.888255, "lr": 0.00064752}, {"epoch": 73, "loss": 0.776222, "acc_pose": 0.88514, "lr": 0.00061974}, {"epoch": 74, "loss": 0.772704, "acc_pose": 0.884576, "lr": 0.0005917}, {"epoch": 75, "loss": 0.769454, "acc_pose": 0.895376, "lr": 0.00056348}, {"epoch": 76, "loss": 0.765785, "acc_pose": 0.89835, "lr": 0.00053522}, {"epoch": 77, "loss": 0.760962, "acc_pose": 0.897244, "lr": 0.00050701}, {"epoch": 78, "loss": 0.756963, "acc_pose": 0.891572, "lr": 0.00047898}, {"epoch": 79, "loss": 0.753448, "acc_pose": 0.897202, "lr": 0.00045122}, {"epoch": 80, "loss": 0.748867, "acc_pose": 0.896373, "lr": 0.00042385}, {"epoch": 81, "loss": 0.744914, "acc_pose": 0.898106, "lr": 0.00039698}, {"epoch": 82, "loss": 0.741632, "acc_pose": 0.898677, "lr": 0.00037072}, {"epoch": 83, "loss": 0.738336, "acc_pose": 0.902004, "lr": 0.00034516}, {"epoch": 84, "loss": 0.733639, "acc_pose": 0.905192, "lr": 0.00032041}, {"epoch": 85, "loss": 0.729095, "acc_pose": 0.900412, "lr": 0.00029657}, {"epoch": 86, "loss": 0.708711, "acc_pose": 0.913343, "lr": 0.00027372}, {"epoch": 87, "loss": 0.702718, "acc_pose": 0.912842, "lr": 0.00025197}, {"epoch": 88, "loss": 0.698604, "acc_pose": 0.91229, "lr": 0.00023139}, {"epoch": 89, "loss": 0.695168, "acc_pose": 0.916031, "lr": 0.00021207}, {"epoch": 90, "loss": 0.691952, "acc_pose": 0.921095, "lr": 0.00019409}, {"epoch": 91, "loss": 0.688793, "acc_pose": 0.921747, "lr": 0.00017751}, {"epoch": 92, "loss": 0.68499, "acc_pose": 0.920698, "lr": 0.0001624}, {"epoch": 93, "loss": 0.683171, "acc_pose": 0.91789, "lr": 0.00014882}, {"epoch": 94, "loss": 0.680218, "acc_pose": 0.921788, "lr": 0.00013682}, {"epoch": 95, "loss": 0.677985, "acc_pose": 0.916504, "lr": 0.00012645}, {"epoch": 96, "loss": 0.675694, "acc_pose": 0.920609, "lr": 0.00011776}, {"epoch": 97, "loss": 0.673753, "acc_pose": 0.921035, "lr": 0.00011077}, {"epoch": 98, "loss": 0.672358, "acc_pose": 0.924836, "lr": 0.00010551}, {"epoch": 99, "loss": 0.671328, "acc_pose": 0.922048, "lr": 0.00010201}, {"epoch": 100, "loss": 0.670222, "acc_pose": 0.920991, "lr": 0.00010027}], "val": [{"step": 5, "ap": 0.8650287158222991, "ap50": 0.9594810751584367, "ap75": 0.9072050507826661, "apm": 0.6501364296832998, "apl": 0.9255439683727515, "ar": 0.8747996769985713, "ar50": 0.9650288837816013, "ar75": 0.9133486551959749}, {"step": 10, "ap": 0.8760063930931937, "ap50": 0.9597937423110793, "ap75": 0.9173530305862254, "apm": 0.6733474131856879, "apl": 0.9335926589914294, "ar": 0.886030188210448, "ar50": 0.9688179390024225, "ar75": 0.9212373439344058}, {"step": 15, "ap": 0.8800571414315017, "ap50": 0.9597293669159145, "ap75": 0.9177884726350323, "apm": 0.682198351801229, "apl": 0.936497427420094, "ar": 0.8907509783216347, "ar50": 0.9696254425740729, "ar75": 0.9250885148145848}, {"step": 20, "ap": 0.884816095108959, "ap50": 0.969509002905, "ap75": 0.918163902118612, "apm": 0.6900029512632849, "apl": 0.9386715858991578, "ar": 0.8934964904652463, "ar50": 0.9714889123548046, "ar75": 0.9275731411888937}, {"step": 25, "ap": 0.8848037592807149, "ap50": 0.9694885456891913, "ap75": 0.9182052927343547, "apm": 0.690359836521469, "apl": 0.9385882514736605, "ar": 0.893776010932356, "ar50": 0.9712404497173738, "ar75": 0.9280700664637556}, {"step": 30, "ap": 0.8868089233814794, "ap50": 0.9695180730665762, "ap75": 0.9181485569653526, "apm": 0.6918611106021215, "apl": 0.9404281614005865, "ar": 0.8948009193117585, "ar50": 0.9717373749922356, "ar75": 0.9278216038263246}, {"step": 35, "ap": 0.8867363627614778, "ap50": 0.9694953837128022, "ap75": 0.9183336946632543, "apm": 0.6923630608517053, "apl": 0.9396072286148861, "ar": 0.8949748431579602, "ar50": 0.9716131436735201, "ar75": 0.9297471892664141}, {"step": 40, "ap": 0.886871682135806, "ap50": 0.9694694935264226, "ap75": 0.9184029676530379, "apm": 0.6940044685699599, "apl": 0.9412648872366367, "ar": 0.8956829616746382, "ar50": 0.9715510280141624, "ar75": 0.9299956519038449}, {"step": 45, "ap": 0.8870274870001554, "ap50": 0.9694897054468729, "ap75": 0.9183861506341549, "apm": 0.6960762321608408, "apl": 0.9413899693923896, "ar": 0.8960805018945275, "ar50": 0.9715510280141624, "ar75": 0.9299956519038449}, {"step": 50, "ap": 0.8870062015532539, "ap50": 0.9694674003078941, "ap75": 0.9182794468808202, "apm": 0.6950433476695287, "apl": 0.9413597526512701, "ar": 0.8959252127461331, "ar50": 0.9710541027393006, "ar75": 0.9289396856947636}, {"step": 55, "ap": 0.8869083925319209, "ap50": 0.9694502508167853, "ap75": 0.918310347653113, "apm": 0.6941379302730724, "apl": 0.9412611589796821, "ar": 0.8956146344493447, "ar50": 0.9704329461457233, "ar75": 0.928629107397975}, {"step": 60, "ap": 0.8869250683719144, "ap50": 0.9694525814149356, "ap75": 0.9182662407841068, "apm": 0.696680832309304, "apl": 0.9412412229353451, "ar": 0.8961550406857569, "ar50": 0.9706192931237965, "ar75": 0.9293744953102677}, {"step": 65, "ap": 0.8868181297879276, "ap50": 0.9694354327059038, "ap75": 0.9182603141955354, "apm": 0.6971190535237014, "apl": 0.941095390872987, "ar": 0.8960308093670413, "ar50": 0.9708677557612274, "ar75": 0.9298093049257717}, {"step": 70, "ap": 0.8879211892516189, "ap50": 0.9694569501798476, "ap75": 0.9277214035627676, "apm": 0.6988061976108644, "apl": 0.9412129361755851, "ar": 0.8967575625815268, "ar50": 0.9710541027393006, "ar75": 0.9308652711348531}, {"step": 75, "ap": 0.8887221013265427, "ap50": 0.9694915021051366, "ap75": 0.9277429656604641, "apm": 0.7010072323591007, "apl": 0.9413146112830725, "ar": 0.8977824709609294, "ar50": 0.9719237219703087, "ar75": 0.9317348903658612}, {"step": 80, "ap": 0.889700473758957, "ap50": 0.9695115753307508, "ap75": 0.9279039522332422, "apm": 0.7025365183701343, "apl": 0.9413909043734882, "ar": 0.8985899745325796, "ar50": 0.9722343002670973, "ar75": 0.9319833530032922}, {"step": 85, "ap": 0.8907274798274543, "ap50": 0.9694972051422222, "ap75": 0.9279864718766815, "apm": 0.7065493901827187, "apl": 0.9414309891663134, "ar": 0.899670787005404, "ar50": 0.9723585315858128, "ar75": 0.932915087893658}, {"step": 90, "ap": 0.8907704383720025, "ap50": 0.9695165332830749, "ap75": 0.9279380236218759, "apm": 0.7089270554616969, "apl": 0.941398390470733, "ar": 0.9008696192310082, "ar50": 0.9734144977948941, "ar75": 0.9335362444872353}, {"step": 95, "ap": 0.8908480335078067, "ap50": 0.9695226691600086, "ap75": 0.9281006757248829, "apm": 0.7105069200300335, "apl": 0.9421377851457571, "ar": 0.9018137772532457, "ar50": 0.9734766134542518, "ar75": 0.9350891359711784}, {"step": 100, "ap": 0.8915948947544033, "ap50": 0.9695248519293265, "ap75": 0.9281299110575641, "apm": 0.7106525518798437, "apl": 0.9431025185697338, "ar": 0.902298279396236, "ar50": 0.9739114230697559, "ar75": 0.935399714267967}]};
+
+const kpis = [
+  { label: "Best Val AP", value: (REPORT.best.ap * 100).toFixed(2) + "%", sub: `Epoch ${REPORT.best.epoch}`, cls: "" },
+  { label: "Best Val AP .5", value: (REPORT.best.ap50 * 100).toFixed(2) + "%", sub: `AP .75: ${(REPORT.best.ap75 * 100).toFixed(2)}%`, cls: "blue" },
+  { label: "Best Val AR", value: (REPORT.best.ar * 100).toFixed(2) + "%", sub: `AP(L): ${(REPORT.best.apl * 100).toFixed(2)}%`, cls: "blue" },
+  { label: "Final Train Loss", value: REPORT.train_summary.final_loss.toFixed(4), sub: `Init: ${REPORT.train_summary.init_loss.toFixed(4)}`, cls: "orange" },
+  { label: "Final Train acc_pose", value: (REPORT.train_summary.final_acc * 100).toFixed(2) + "%", sub: `Epoch ${REPORT.train_summary.max_epoch} mean`, cls: "" },
+  { label: "Avg Speed", value: REPORT.train_summary.avg_time.toFixed(3) + " s/it", sub: `data_time: ${REPORT.train_summary.avg_data_time.toFixed(3)}s`, cls: "blue" },
+];
+document.getElementById("kpiGrid").innerHTML = kpis.map(k =>
+  `<div class="kpi ${k.cls}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub">${k.sub}</div></div>`
+).join("");
+
+document.getElementById("valTableBody").innerHTML = REPORT.val.map(r => {
+  const cls = r.step === REPORT.best.epoch ? "best" : "";
+  return `<tr class="${cls}">
+    <td>${r.step}${cls ? " ★" : ""}</td>
+    <td>${r.ap.toFixed(4)}</td><td>${r.ap50.toFixed(4)}</td><td>${r.ap75.toFixed(4)}</td>
+    <td>${r.apm.toFixed(4)}</td><td>${r.apl.toFixed(4)}</td>
+    <td>${r.ar.toFixed(4)}</td><td>${r.ar50.toFixed(4)}</td><td>${r.ar75.toFixed(4)}</td>
+  </tr>`;
+}).join("");
+
+const tooltip = document.getElementById("chartTooltip");
+const chartMeta = {};
+
+function drawLineChart(canvasId, xs, seriesList, hoverIdx = -1) {
+  const canvas = document.getElementById(canvasId);
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const pad = { l: 54, r: 20, t: 18, b: 32 };
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  let yAll = [];
+  seriesList.forEach(s => { if (!s.rightAxis) yAll.push(...s.ys); });
+  let yMin = Math.min(...yAll), yMax = Math.max(...yAll);
+  const yPad = (yMax - yMin) * 0.08 || 0.05;
+  yMin -= yPad; yMax += yPad;
+
+  const toX = x => pad.l + ((x - xMin) / Math.max(1e-9, xMax - xMin)) * pw;
+  const toY = (y, mn, mx) => pad.t + ph - ((y - mn) / Math.max(1e-9, mx - mn)) * ph;
+
+  chartMeta[canvasId] = { xs, seriesList, pad, pw, ph, xMin, xMax };
+
+  ctx.strokeStyle = "#21262d"; ctx.lineWidth = 1;
+  ctx.fillStyle = "#8b949e"; ctx.font = "11px sans-serif";
+  for (let i = 0; i <= 4; i++) {
+    const frac = i / 4;
+    const gy = pad.t + frac * ph;
+    const val = yMax - frac * (yMax - yMin);
+    ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(W - pad.r, gy); ctx.stroke();
+    ctx.fillText(val.toFixed(3), 6, gy + 4);
+  }
+  for (let i = 0; i <= 5; i++) {
+    const frac = i / 5;
+    const xv = xMin + frac * (xMax - xMin);
+    const gx = pad.l + frac * pw;
+    ctx.fillText(`ep ${Math.round(xv)}`, gx - 14, H - 10);
+  }
+
+  seriesList.forEach(s => {
+    const mn = s.rightAxis ? Math.min(...s.ys) : yMin;
+    const mx = s.rightAxis ? Math.max(...s.ys) : yMax;
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.width || 2;
+    ctx.setLineDash(s.dash || []);
+    ctx.beginPath();
+    xs.forEach((x, i) => {
+      const px = toX(x), py = toY(s.ys[i], mn, mx);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    if (s.dots) {
+      ctx.fillStyle = s.color;
+      xs.forEach((x, i) => {
+        ctx.beginPath(); ctx.arc(toX(x), toY(s.ys[i], mn, mx), 3, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+  });
+  ctx.setLineDash([]);
+
+  if (hoverIdx >= 0 && hoverIdx < xs.length) {
+    const hx = toX(xs[hoverIdx]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, H - pad.b); ctx.stroke();
+    ctx.setLineDash([]);
+
+    seriesList.forEach(s => {
+      const mn = s.rightAxis ? Math.min(...s.ys) : yMin;
+      const mx = s.rightAxis ? Math.max(...s.ys) : yMax;
+      const hy = toY(s.ys[hoverIdx], mn, mx);
+      ctx.fillStyle = s.color;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+  }
+}
+
+function bindHover(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  canvas.addEventListener("mousemove", e => {
+    const meta = chartMeta[canvasId];
+    if (!meta) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if (mx < meta.pad.l || mx > rect.width - meta.pad.r || my < meta.pad.t || my > rect.height - meta.pad.b) {
+      drawLineChart(canvasId, meta.xs, meta.seriesList, -1);
+      tooltip.style.display = "none";
+      return;
+    }
+    const targetX = meta.xMin + ((mx - meta.pad.l) / meta.pw) * (meta.xMax - meta.xMin);
+    let bestIdx = 0, bestDiff = Infinity;
+    meta.xs.forEach((x, i) => {
+      const d = Math.abs(x - targetX);
+      if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+    });
+    drawLineChart(canvasId, meta.xs, meta.seriesList, bestIdx);
+    const lines = [`<b>Epoch ${meta.xs[bestIdx]}</b>`];
+    meta.seriesList.forEach(s => {
+      const v = s.ys[bestIdx];
+      const txt = s.fmt ? s.fmt(v) : v.toFixed(4);
+      lines.push(`<div><span class="dot" style="background:${s.color}"></span>${s.label}: <b>${txt}</b></div>`);
+    });
+    tooltip.innerHTML = lines.join("");
+    tooltip.style.display = "block";
+    const tx = Math.min(window.innerWidth - tooltip.offsetWidth - 12, e.clientX + 14);
+    const ty = Math.min(window.innerHeight - tooltip.offsetHeight - 12, e.clientY + 14);
+    tooltip.style.left = `${Math.max(8, tx)}px`;
+    tooltip.style.top = `${Math.max(8, ty)}px`;
+  });
+  canvas.addEventListener("mouseleave", () => {
+    const meta = chartMeta[canvasId];
+    if (meta) drawLineChart(canvasId, meta.xs, meta.seriesList, -1);
+    tooltip.style.display = "none";
+  });
+}
+
+function renderAllCharts() {
+  const trEps = REPORT.train_epoch.map(r => r.epoch);
+  drawLineChart("lossChart", trEps, [
+    { label: "Train Loss", ys: REPORT.train_epoch.map(r => r.loss), color: "#58a6ff", width: 2.2 },
+  ]);
+  drawLineChart("accChart", trEps, [
+    { label: "acc_pose", ys: REPORT.train_epoch.map(r => r.acc_pose), color: "#3fb950", width: 2.2 },
+    { label: "LR", ys: REPORT.train_epoch.map(r => r.lr), color: "#8b949e", width: 1.5, dash: [4, 4], rightAxis: true, fmt: v => v.toExponential(2) },
+  ]);
+
+  const vEps = REPORT.val.map(r => r.step);
+  drawLineChart("valChart", vEps, [
+    { label: "AP", ys: REPORT.val.map(r => r.ap), color: "#f85149", width: 2.4, dots: true },
+    { label: "AP .5", ys: REPORT.val.map(r => r.ap50), color: "#ffa657", width: 1.8, dash: [5, 3], dots: true },
+    { label: "AP .75", ys: REPORT.val.map(r => r.ap75), color: "#a371f7", width: 1.8, dash: [5, 3], dots: true },
+    { label: "AR", ys: REPORT.val.map(r => r.ar), color: "#39c5cf", width: 1.8, dash: [2, 3], dots: true },
+  ]);
+  drawLineChart("scaleChart", vEps, [
+    { label: "AP (Large)", ys: REPORT.val.map(r => r.apl), color: "#3fb950", width: 2.2, dots: true },
+    { label: "AP (Medium)", ys: REPORT.val.map(r => r.apm), color: "#f778ba", width: 2.2, dots: true },
+  ]);
+}
+renderAllCharts();
+["lossChart", "accChart", "valChart", "scaleChart"].forEach(bindHover);
+window.addEventListener("resize", renderAllCharts);
+</script>
+</body>
+</html>
