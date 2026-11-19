@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Bayley-4th Gross Motor · Action Grouping Visualizer</title>
+<title>Bayley-4th Gross Motor · Action Grouping Editor</title>
 <style>
   :root {
     --bg: #f4f6f9;
@@ -16,6 +16,8 @@
     --text-3: #64748b;
     --accent: #2563eb;
     --accent-soft: #eff6ff;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
     --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
     --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08);
     --radius: 10px;
@@ -33,6 +35,8 @@
     --text-3: #94a3b8;
     --accent: #60a5fa;
     --accent-soft: rgba(59, 130, 246, 0.16);
+    --danger: #f87171;
+    --danger-soft: rgba(220, 38, 38, 0.15);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
@@ -53,11 +57,11 @@
   header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 8px 14px;
+    padding: 7px 14px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     z-index: 20;
     box-shadow: var(--shadow-sm);
   }
@@ -65,7 +69,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-right: 4px;
+    margin-right: 2px;
   }
   .brand-dot {
     width: 10px; height: 10px; border-radius: 3px;
@@ -73,18 +77,17 @@
     flex-shrink: 0;
   }
   .brand h1 {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 700;
     letter-spacing: -0.02em;
     white-space: nowrap;
   }
   .brand .sub {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--text-3);
     font-weight: 500;
   }
 
-  /* View tabs */
   .seg {
     display: inline-flex;
     background: var(--surface-2);
@@ -97,8 +100,8 @@
     border: none;
     background: transparent;
     color: var(--text-2);
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 9px;
+    font-size: 11.5px;
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
@@ -113,20 +116,19 @@
   }
   .seg button:hover:not(.active) { color: var(--text); }
 
-  /* Filter pills */
   .filters {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
   }
   .pill {
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-2);
-    padding: 3px 9px;
+    padding: 3px 8px;
     border-radius: 999px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
@@ -137,8 +139,8 @@
   }
   .pill .cnt {
     font-family: var(--mono);
-    font-size: 10.5px;
-    opacity: 0.8;
+    font-size: 10px;
+    opacity: 0.85;
   }
   .pill:hover { border-color: var(--border-strong); color: var(--text); }
   .pill.active {
@@ -147,12 +149,12 @@
     color: #fff;
   }
 
-  /* Right header controls */
   .header-right {
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   .search-wrap {
     position: relative;
@@ -160,13 +162,13 @@
     align-items: center;
   }
   .search-wrap input {
-    width: 190px;
-    padding: 4px 24px 4px 26px;
+    width: 165px;
+    padding: 4px 22px 4px 24px;
     border-radius: 7px;
     border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--text);
-    font-size: 12px;
+    font-size: 11.5px;
     font-family: inherit;
     outline: none;
     transition: border-color 0.15s, width 0.2s;
@@ -174,18 +176,18 @@
   .search-wrap input:focus {
     border-color: var(--accent);
     background: var(--surface);
-    width: 230px;
+    width: 205px;
   }
   .search-icon {
     position: absolute;
-    left: 8px;
+    left: 7px;
     font-size: 11px;
     color: var(--text-3);
     pointer-events: none;
   }
   .search-clear {
     position: absolute;
-    right: 6px;
+    right: 5px;
     border: none;
     background: transparent;
     color: var(--text-3);
@@ -210,9 +212,61 @@
     gap: 4px;
     font-family: inherit;
     white-space: nowrap;
+    transition: all 0.12s;
   }
-  .icon-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .icon-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text); }
+  .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .icon-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .icon-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .icon-btn.primary:hover { filter: brightness(1.07); color: #fff; }
+  .icon-btn.danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    background: var(--danger-soft);
+  }
+  .icon-btn.danger:hover { filter: brightness(0.96); }
+
+  /* Edit Toolbar strip */
+  .edit-bar {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .edit-tip {
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .dirty-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    display: none;
+  }
+  [data-theme="dark"] .dirty-badge { color: #fcd34d; }
+  .dirty-badge.show { display: inline-flex; align-items: center; gap: 4px; }
+  .edit-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 
   /* Workspace split layout */
   .workspace {
@@ -234,6 +288,7 @@
     align-items: center;
     justify-content: space-between;
     margin: 2px 0 8px;
+    gap: 8px;
   }
   .section-title {
     font-size: 11.5px;
@@ -260,15 +315,18 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+    transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s, transform 0.12s;
   }
   .cluster-card.selected {
     box-shadow: 0 0 0 2px var(--c-color), var(--shadow-md);
   }
-  .cluster-card.dimmed { opacity: 0.35; }
+  .cluster-card.drag-over {
+    box-shadow: 0 0 0 2px var(--c-color), 0 0 0 5px color-mix(in srgb, var(--c-color) 18%, transparent);
+    transform: translateY(-1px);
+  }
   .cluster-head {
     padding: 8px 10px;
-    background: var(--c-bg);
+    background: color-mix(in srgb, var(--c-color) 9%, var(--surface));
     border-bottom: 1px solid var(--border);
     cursor: pointer;
     display: flex;
@@ -277,8 +335,7 @@
     gap: 8px;
     user-select: none;
   }
-  [data-theme="dark"] .cluster-head { background: var(--c-dark-bg); }
-  .cluster-head:hover { filter: brightness(0.98); }
+  .cluster-head:hover { background: color-mix(in srgb, var(--c-color) 14%, var(--surface)); }
   .cluster-name-ko {
     font-size: 12.5px;
     font-weight: 700;
@@ -329,21 +386,32 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-height: 44px;
   }
   .cluster-card.collapsed .cluster-body { display: none; }
+  .cluster-empty-drop {
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3);
+  }
 
-  /* Action Row (used in clusters & standalone) */
+  /* Action Row */
   .action-row {
     padding: 6px 8px;
     border-radius: 7px;
     border: 1px solid transparent;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, transform 0.1s, opacity 0.15s;
+    cursor: grab;
+    transition: background 0.12s, border-color 0.12s, opacity 0.15s;
     display: flex;
     flex-direction: column;
     gap: 2px;
     position: relative;
   }
+  .action-row:active, .standalone-card:active { cursor: grabbing; }
+  .action-row.dragging, .standalone-card.dragging { opacity: 0.4; }
   .action-row:hover {
     background: var(--surface-2);
     border-color: var(--border);
@@ -356,26 +424,31 @@
     background: rgba(245, 158, 11, 0.12);
     border-color: #f59e0b;
   }
-  .action-row.dimmed { opacity: 0.28; }
   .action-top {
     display: flex;
     align-items: baseline;
     gap: 6px;
     min-width: 0;
   }
+  .drag-grip {
+    color: var(--text-3);
+    opacity: 0.45;
+    font-size: 10px;
+    letter-spacing: -1px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .action-row:hover .drag-grip, .standalone-card:hover .drag-grip { opacity: 0.9; }
   .gm-id {
     font-family: var(--mono);
     font-size: 11px;
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 4px;
-    background: var(--c-bg, var(--surface-2));
+    background: color-mix(in srgb, var(--c-color, #64748b) 13%, var(--surface));
     color: var(--c-color, var(--text-2));
-    border: 1px solid color-mix(in srgb, var(--c-color, #94a3b8) 28%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c-color, #94a3b8) 30%, transparent);
     flex-shrink: 0;
-  }
-  [data-theme="dark"] .gm-id {
-    background: var(--c-dark-bg, var(--surface-2));
   }
   .action-title {
     font-size: 12.5px;
@@ -407,14 +480,25 @@
   .action-desc {
     font-size: 11.5px;
     color: var(--text-2);
-    padding-left: 2px;
+    padding-left: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   body.hide-desc .action-desc { display: none; }
 
-  /* Standalone Grid */
+  /* Standalone Drop Zone */
+  .standalone-zone {
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 8px;
+    background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .standalone-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
   .standalone-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
@@ -427,15 +511,14 @@
     border-radius: 8px;
     box-shadow: var(--shadow-sm);
     padding: 6px 8px;
-    cursor: pointer;
+    cursor: grab;
     transition: all 0.12s;
   }
   .standalone-card:hover { border-color: var(--border-strong); background: var(--surface-2); }
   .standalone-card.selected { border-color: var(--accent); background: var(--accent-soft); }
   .standalone-card.rel-highlight { border-color: #f59e0b; background: rgba(245,158,11,0.12); }
-  .standalone-card.dimmed { opacity: 0.28; }
 
-  /* Timeline / Sequence View */
+  /* Sequence View */
   .seq-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
@@ -456,7 +539,6 @@
   .seq-card:hover { background: var(--surface-2); border-color: var(--border-strong); }
   .seq-card.selected { border-color: var(--accent); background: var(--accent-soft); }
   .seq-card.rel-highlight { border-color: #f59e0b; background: rgba(245,158,11,0.12); }
-  .seq-card.dimmed { opacity: 0.28; }
   .seq-meta {
     display: flex;
     align-items: center;
@@ -522,13 +604,11 @@
     user-select: none;
   }
   .g-node { cursor: pointer; transition: opacity 0.15s; }
-  .g-node rect { transition: stroke-width 0.12s, filter 0.12s; }
-  .g-node:hover rect { filter: brightness(0.97); }
   .g-edge { fill: none; transition: opacity 0.15s, stroke-width 0.15s; pointer-events: none; }
 
   /* Right Inspector Panel */
   aside.inspector {
-    width: 390px;
+    width: 400px;
     flex-shrink: 0;
     background: var(--surface);
     border-left: 1px solid var(--border);
@@ -542,7 +622,7 @@
     border-left-color: transparent;
   }
   .insp-head {
-    padding: 10px 12px;
+    padding: 9px 12px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -557,6 +637,10 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .insp-close {
     border: none;
@@ -578,17 +662,8 @@
     gap: 12px;
   }
 
-  .insp-hero {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .insp-badges {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
+  .insp-hero { display: flex; flex-direction: column; gap: 4px; }
+  .insp-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .cluster-chip {
     font-size: 11px;
     font-weight: 700;
@@ -600,7 +675,6 @@
     align-items: center;
     gap: 4px;
   }
-  .cluster-chip:hover { filter: brightness(0.95); }
   .insp-title-ko {
     font-size: 16px;
     font-weight: 800;
@@ -622,11 +696,7 @@
     color: var(--text);
   }
 
-  .insp-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .insp-section { display: flex; flex-direction: column; gap: 6px; }
   .insp-sec-head {
     display: flex;
     align-items: center;
@@ -638,12 +708,63 @@
     color: var(--text-3);
   }
 
-  /* Scoring cards */
-  .score-list {
+  /* Form controls inside inspector */
+  .field-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 10px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 7px;
   }
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .field-row label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-3);
+  }
+  .field-row input[type="text"],
+  .field-row textarea,
+  .field-row select {
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+  }
+  .field-row input:focus,
+  .field-row textarea:focus,
+  .field-row select:focus {
+    border-color: var(--accent);
+  }
+  .field-row textarea { resize: vertical; min-height: 54px; line-height: 1.4; }
+  .color-palette {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .swatch {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.active { border-color: var(--text); transform: scale(1.12); }
+
+  /* Scoring cards */
+  .score-list { display: flex; flex-direction: column; gap: 5px; }
   .score-row {
     display: flex;
     gap: 8px;
@@ -677,7 +798,6 @@
     padding-top: 3px;
   }
 
-  /* Collapsible details inside inspector */
   details.insp-details {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -711,12 +831,7 @@
     line-height: 1.5;
   }
 
-  /* Jump chips */
-  .chip-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
   .jump-chip {
     border: 1px solid var(--border);
     background: var(--surface-2);
@@ -732,11 +847,7 @@
     transition: all 0.12s;
   }
   .jump-chip:hover { border-color: var(--accent); background: var(--accent-soft); }
-  .jump-chip.external {
-    border-style: dashed;
-    color: var(--text-3);
-    cursor: default;
-  }
+  .jump-chip.external { border-style: dashed; color: var(--text-3); cursor: default; }
   .jump-chip.external:hover { border-color: var(--border); background: var(--surface-2); }
   .tag-micro {
     font-size: 9.5px;
@@ -748,7 +859,6 @@
   .tag-cross { background: rgba(245,158,11,0.18); color: #b45309; }
   .tag-ext { background: rgba(100,116,139,0.15); color: var(--text-3); }
 
-  /* Cluster comparison list in inspector */
   .cmp-item {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -768,8 +878,18 @@
     gap: 5px;
     align-items: flex-start;
   }
+  .rm-member-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 4px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+  .rm-member-btn:hover { background: var(--danger-soft); color: var(--danger); }
 
-  /* Overview stat cards in inspector */
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -782,17 +902,8 @@
     padding: 8px;
     text-align: center;
   }
-  .stat-val {
-    font-family: var(--mono);
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--text);
-  }
-  .stat-lbl {
-    font-size: 10.5px;
-    color: var(--text-3);
-    margin-top: 1px;
-  }
+  .stat-val { font-family: var(--mono); font-size: 18px; font-weight: 800; color: var(--text); }
+  .stat-lbl { font-size: 10.5px; color: var(--text-3); margin-top: 1px; }
   .insight-box {
     border: 1px solid rgba(245, 158, 11, 0.4);
     background: rgba(245, 158, 11, 0.08);
@@ -805,27 +916,99 @@
     gap: 5px;
   }
   .insight-box strong { color: var(--text); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 13px; }
 
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-3);
-    font-size: 13px;
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s;
+    z-index: 60;
+  }
+  [data-theme="dark"] .toast { background: #f1f5f9; color: #0f172a; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Modal for JSON Preview */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: min(760px, 96vw);
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+  .modal-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-2);
+  }
+  .modal-body {
+    padding: 12px 14px;
+    overflow: auto;
+    flex: 1;
+  }
+  .modal-body pre {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.45;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--text);
+  }
+  .modal-foot {
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    background: var(--surface-2);
   }
 
   @media (max-width: 960px) {
     aside.inspector {
       position: fixed;
       right: 0;
-      top: 52px;
+      top: 84px;
       bottom: 0;
-      width: min(92vw, 390px);
+      width: min(92vw, 400px);
       z-index: 30;
       box-shadow: var(--shadow-md);
     }
     aside.inspector.closed {
       transform: translateX(100%);
-      width: min(92vw, 390px);
+      width: min(92vw, 400px);
     }
   }
 </style>
@@ -848,23 +1031,37 @@
 
   <div class="filters" id="filterBar">
     <button class="pill active" data-filter="all">전체 <span class="cnt" id="cntAll">25</span></button>
-    <button class="pill" data-filter="clustered">그룹 소속 <span class="cnt" id="cntClustered">16</span></button>
-    <button class="pill" data-filter="standalone">단독 항목 <span class="cnt" id="cntStandalone">9</span></button>
-    <button class="pill" data-filter="cross">교차 연결 <span class="cnt" id="cntCross">4</span></button>
+    <button class="pill" data-filter="clustered">그룹 <span class="cnt" id="cntClustered">16</span></button>
+    <button class="pill" data-filter="standalone">단독 <span class="cnt" id="cntStandalone">9</span></button>
+    <button class="pill" data-filter="cross">교차 <span class="cnt" id="cntCross">4</span></button>
   </div>
 
   <div class="header-right">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input id="searchInput" type="text" placeholder="번호·한글·영어·준비물 (/)" autocomplete="off" />
+      <input id="searchInput" type="text" placeholder="번호·한글·영어 (/)" autocomplete="off" />
       <button id="searchClear" class="search-clear" title="검색어 지우기">×</button>
     </div>
-    <button id="toggleDescBtn" class="icon-btn on" title="카드 하단 한 줄 설명 표시/숨김">설명 표시</button>
-    <button id="toggleCollapseBtn" class="icon-btn" title="모든 클러스터 접기/펼치기">모두 접기</button>
-    <button id="toggleInspBtn" class="icon-btn on" title="상세 패널 열기/닫기">상세 패널</button>
+    <button id="toggleDescBtn" class="icon-btn on" title="카드 하단 한 줄 설명 표시/숨김">설명</button>
+    <button id="toggleCollapseBtn" class="icon-btn" title="모든 클러스터 접기/펼치기">접기</button>
+    <button id="toggleInspBtn" class="icon-btn on" title="상세 패널 열기/닫기">상세</button>
     <button id="themeBtn" class="icon-btn" title="다크/라이트 테마 전환">🌙</button>
   </div>
 </header>
+
+<div class="edit-bar">
+  <span class="edit-tip">✏️ <strong>편집 가능:</strong> 항목을 드래그해서 그룹 이동/해제하거나, 클릭 후 우측 패널에서 그룹·설명을 수정하세요.</span>
+  <span class="dirty-badge" id="dirtyBadge">● 수정됨</span>
+  <div class="edit-actions">
+    <button id="newClusterBtn" class="icon-btn">+ 새 그룹</button>
+    <button id="undoBtn" class="icon-btn" disabled title="실행 취소 (Ctrl+Z)">↶ 취소</button>
+    <button id="resetBtn" class="icon-btn" disabled title="원본 config/action_group.json으로 복원">↺ 원본 복원</button>
+    <button id="importBtn" class="icon-btn" title="저장해 둔 action_group.json 불러오기">📂 불러오기</button>
+    <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;" />
+    <button id="previewJsonBtn" class="icon-btn" title="내보낼 action_group.json 미리보기 및 복사">{ } 미리보기</button>
+    <button id="downloadBtn" class="icon-btn primary" title="수정된 action_group.json 파일 다운로드">💾 action_group.json 저장</button>
+  </div>
+</div>
 
 <div class="workspace">
   <main id="mainArea"></main>
@@ -877,34 +1074,131 @@
   </aside>
 </div>
 
+<div class="modal-backdrop" id="jsonModal">
+  <div class="modal">
+    <div class="modal-head">
+      <strong style="font-size:13px;">action_group.json 미리보기</strong>
+      <button class="insp-close" id="closeModalBtn">×</button>
+    </div>
+    <div class="modal-body">
+      <pre id="jsonPreviewPre"></pre>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" id="copyJsonBtn">📋 클립보드 복사</button>
+      <button class="icon-btn primary" id="modalDownloadBtn">💾 action_group.json 다운로드</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-const DATA = {"actions": {"GM_23": {"id": "GM_23", "num": 23, "name_en": "Rolls: Back to Stomach", "name_ko": "뒤집기: 등→배", "alias": "Roll Back to Stomach", "desc": "등 대고 누운 자세에서 엎드린 자세로 뒤집기", "cluster_id": null, "materials": "Bell, rattle", "instructions": "Observe if the child moves from back to stomach by rolling to the right or to the left. If not observed, shake the bell or rattle at one side of the child. if the child does not respond by rolling to stomach, repeat on the other side", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Consistently able to roll from back to stomach from either side", "1": "Inconsistently able to roll from back to stomach from eiter side or typically rolls from back to side", "0": "Does not roll from back to stomach"}, "scores_ko": {"2": "어느 쪽으로든 등을 대고 누운 자세에서 엎드린 자세로 일관되게 뒤집을 수 있다.", "1": "어느 쪽으로든 등에서 배로 뒤집기가 일관되지 않거나, 보통 등에서 옆으로만 돌아눕는다.", "0": "등을 대고 누운 자세에서 엎드린 자세로 뒤집지 못한다."}, "related": [], "referenced_by": []}, "GM_24": {"id": "GM_24", "num": 24, "name_en": "Unsupported Sitting Series: 30 Seconds", "name_ko": "혼자 앉기 (30초)", "alias": "Sit Unsupported 30s", "desc": "지지 없이 등을 펴고 30초 이상 앉아 있기", "cluster_id": null, "materials": "Timer", "instructions": "with the child seated, provide pelvic support by placing your hands around the child's lower back. According to the child's ability to sit alone, gradually loosen your hold. if the child loses balance once or twice but is able to self-right (does not fall over), give credit.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "sits without support for at least 30 seconds with back straight", "1": "Sits without support for 11 to 29 seconds with eiter back straight or leaning forward slightly", "0": "Sits without support for 0 to 10 seconds."}, "scores_ko": {"2": "등을 곧게 펴고 지지 없이 30초 이상 앉아 있다.", "1": "등을 곧게 펴거나 약간 앞으로 기울인 채 지지 없이 11~29초 앉아 있다.", "0": "지지 없이 앉아 있는 시간이 0~10초이다."}, "related": [], "referenced_by": []}, "GM_25": {"id": "GM_25", "num": 25, "name_en": "Early Stepping Movements", "name_ko": "초기 발걸음", "alias": "Early Stepping", "desc": "겨드랑이 지지 하에 앞으로 내딛는 초기 발걸음 (4보 이상)", "cluster_id": "Cluster_Standing_Stepping", "materials": "None", "instructions": "Have the caregiver stand the child on the floor while supporting him or her by placing hands under the arms. Have the caregiver lean the child forward to encourage stepping movements. The child does not have to fully support weight.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Makes at least 4 stepping movements that propel forward", "1": "Makes at least 2 stepping movements that propel forward", "0": "Does not make at least 2 stepping movements or holds legs stiffly"}, "scores_ko": {"2": "앞으로 나아가는 발 내딛기 동작을 4회 이상 한다.", "1": "앞으로 나아가는 발 내딛기 동작을 2회 이상 한다.", "0": "발 내딛기 동작을 2회 이상 하지 못하거나 다리를 뻣뻣하게 유지한다."}, "related": ["GM_28", "GM_34"], "referenced_by": []}, "GM_27": {"id": "GM_27", "num": 27, "name_en": "Transitions from sitting to hands and knees", "name_ko": "앉기→네발기기 전환", "alias": "Sit to Quadruped", "desc": "앉은 자세에서 네발기기 자세로 안정적인 전환", "cluster_id": "Cluster_Sit_Quadruped_Pull_to_Stand", "materials": "Object of interest", "instructions": "Observe if the child moves from a seated position to hands and knees if you do not observe this, place an object jus out of the child's reach and encourage the child to get the object.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Moves from a seated position to hands and knees with good balance", "1": "Does not move from a seated position to hands and knees with good balance", "0": "Loses balance when changing position or does not move from seated position to hands and knees."}, "scores_ko": {"2": "균형을 잘 유지하며 앉은 자세에서 손과 무릎을 짚는 자세로 전환한다.", "1": "앉은 자세에서 손과 무릎을 짚는 자세로 전환할 때 좋은 균형을 보이지 못한다.", "0": "자세를 바꿀 때 균형을 잃거나 앉은 자세에서 손과 무릎을 짚는 자세로 전환하지 못한다."}, "related": ["GM_30", "GM_33"], "referenced_by": []}, "GM_28": {"id": "GM_28", "num": 28, "name_en": "Supports weight", "name_ko": "체중 지지 서기", "alias": "Weight Bearing Standing", "desc": "손으로 균형만 잡고 스스로 체중 지지하여 서기 (4초 이상)", "cluster_id": "Cluster_Standing_Stepping", "materials": "Timer", "instructions": "Stand the child on the floor and hold hands so that the child's arms are extended in front at shoulder height. If the child appears able to support own weight while standing, slowly loosen your hold. observe if the child stands momentarily, using your hands for bvalance but not for support. Begin timing.\nkeep your hands clos to the child in case he or she loses balance.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Supports own weight for at least 4 seconds using your hands for balance only.", "1": "supports own weight for 2 to 3 seconds using your hands for balance only.", "0": "supports own weight for 0 to 1 seconds using your hands for balance only or requires support to remain standing."}, "scores_ko": {"2": "검사자의 손은 균형 유지에만 이용하면서 자신의 체중을 4초 이상 지탱한다.", "1": "검사자의 손은 균형 유지에만 이용하면서 자신의 체중을 2~3초 지탱한다.", "0": "검사자의 손을 균형 유지에만 이용하여 체중을 지탱하는 시간이 0~1초이거나, 서 있기 위해 체중 지지가 필요하다."}, "related": ["GM_20", "GM_25", "GM_34"], "referenced_by": []}, "GM_29": {"id": "GM_29", "num": 29, "name_en": "Crawls Series: crawl movement", "name_ko": "네발 기어가기", "alias": "Crawl Movement", "desc": "손과 무릎(또는 발)으로 앞으로 기어가기 (5피트 이상)", "cluster_id": null, "materials": "Object of interest", "instructions": "Place an object of interest approximately 12 in. in front of the child out of his or her reach. place the object farter away if it looks like the child is bale to crawl. Encourage the child to get the object.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Crawl forward on hands and knees (or feet) for at least 5 ft.", "1": "Crawl forward on hands and knees (or feet) for less than least 5 ft.", "0": "Does not crawl forward on hands and knees (or feet)"}, "scores_ko": {"2": "손과 무릎(또는 발)으로 5피트 이상 앞으로 기어간다.", "1": "손과 무릎(또는 발)으로 앞으로 기어가지만 거리가 5피트 미만이다.", "0": "손과 무릎(또는 발)으로 앞으로 기어가지 못한다."}, "related": [], "referenced_by": []}, "GM_30": {"id": "GM_30", "num": 30, "name_en": "Raisees self to standing", "name_ko": "잡고 일어서기", "alias": "Pull to Stand", "desc": "물체/지지대를 붙잡고 스스로 일어서기", "cluster_id": "Cluster_Sit_Quadruped_Pull_to_Stand", "materials": "object of interest", "instructions": "Observe if the child pulls to a standing position from a seated position using a chair, table leg, or other convenient object for support. if you do not observe this, enlist the caregiver so that the child can pull up on him or her. Encourage the child to get up, or place the child next to a stable chair and place an object on the edge of the chail to entice the child to get up", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Rises to a standing position using a chair or other convenient object for support", "1": "Attempts to rise to a standing position but cannot pull up completely", "0": "Does not attempt to rise to a standing position or loses balance immediately"}, "scores_ko": {"2": "의자나 적절한 물체를 지지대로 이용하여 선 자세로 일어난다.", "1": "일어서려고 시도하지만 완전히 일어서지 못한다.", "0": "일어서기를 시도하지 않거나 즉시 균형을 잃는다."}, "related": ["GM_27", "GM_33"], "referenced_by": []}, "GM_31": {"id": "GM_31", "num": 31, "name_en": "Walks Series: with support", "name_ko": "지지 보행", "alias": "Walk Supported", "desc": "보호자 손 지지 하에 조화롭게 걷기 (4보 이상)", "cluster_id": "Cluster_Supported_Walking_Cruising", "materials": "None", "instructions": "If the child is not walking freely, have the caregiver stand the child on the floor and hold the child's hands so that the child's arms are extended in front at shoulder height.\nEncourage the child to walk toward the caregiver. if the child walks with coordinated steps, have the caregiver slowly release grasp on the child's hands according to the child's ability to walk unsupported", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 4 steps with support with good coordination.", "1": "Takes at least 2 steps with support with good coordination or more than 2 steps without good coordination", "0": "Does not take any steps or relies completely on support to move forward."}, "scores_ko": {"2": "지지를 받으며 협응이 좋은 걸음으로 4걸음 이상 걷는다.", "1": "지지를 받으며 협응이 좋은 걸음으로 2걸음 이상 걷거나, 협응이 좋지 않은 걸음으로 2걸음 초과 걷는다.", "0": "발걸음을 내딛지 못하거나 앞으로 이동할 때 지지에 완전히 의존한다."}, "related": ["GM_32", "GM_36", "GM_40"], "referenced_by": []}, "GM_32": {"id": "GM_32", "num": 32, "name_en": "Walks sideways with support (cruises)", "name_ko": "옆으로 걷기 (크루징)", "alias": "Cruising Sideways", "desc": "지지대를 붙잡고 옆으로 걷기/크루징 (2보 이상)", "cluster_id": "Cluster_Supported_Walking_Cruising", "materials": "object of interest", "instructions": "Stand the child next to support(e.g. 2 chairs placed side by side tabe) and observe if the child moves from one point to another by walking side ways. if the child can stand with support but does not walk, place an object of interest on the furniture just out of reach so that he or she must walk sideways to reach the object of interest", "caregiver_question": "", "tracking": "", "scores_en": {"2": "walks sideways at least 2steps with support", "1": "Attempt to walk side ways but does not take at least 2 steps", "0": "Does not walk sideways"}, "scores_ko": {"2": "지지를 받으며 옆으로 2걸음 이상 걷는다.", "1": "옆으로 걷기를 시도하지만 2걸음 이상 내딛지 못한다.", "0": "옆으로 걷지 못한다."}, "related": ["GM_31", "GM_36", "GM_40"], "referenced_by": []}, "GM_34": {"id": "GM_34", "num": 34, "name_en": "Stands alone", "name_ko": "혼자 서기", "alias": "Stand Alone", "desc": "지지 없이 스스로 혼자 서 있기 (5초 이상)", "cluster_id": "Cluster_Standing_Stepping", "materials": "Timer", "instructions": "Have the caregiver stand the child on the floor on the floor and hold the child's hands so that the child's arms are extended infron at shulder height. have the caregiver slowly release grasp on the child's hands. begin timing", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Stands alone for at least 5 seconds after hands are released.", "1": "Stands alone for 3 to 4 seconds after hands are released.", "0": "Stands alone for 0 to 2 seconds"}, "scores_ko": {"2": "잡은 손을 놓은 뒤 혼자 5초 이상 서 있다.", "1": "잡은 손을 놓은 뒤 혼자 3~4초 서 있다.", "0": "혼자 서 있는 시간이 0~2초이다."}, "related": ["GM_20", "GM_25", "GM_28"], "referenced_by": []}, "GM_35": {"id": "GM_35", "num": 35, "name_en": "Stands up alone", "name_ko": "혼자 일어서기", "alias": "Stand Up Alone", "desc": "바닥에 누운 상태에서 지지물 없이 혼자 일어서기", "cluster_id": null, "materials": "None", "instructions": "In a playful manner, place the child on his or her back on his or her back on the floor away from any objects that could be used for support. Encourage the child to stand up.\nIf the child sits straight up, without first rolling into a prone or quadruped (hands and feet on floor) position before standing, score 2 points.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Rolls to 1 side and stands without using any support", "1": "Rolls into a prone or quadruped (hands and feet on floor) position and stands without using any support", "0": "Does not stand up or stands up only with support."}, "scores_ko": {"2": "한쪽으로 돌아누운 뒤 아무 지지도 이용하지 않고 일어선다.", "1": "엎드리거나 네발 자세(손과 발을 바닥에 댄 자세)로 돌아선 뒤 지지 없이 일어선다.", "0": "일어서지 못하거나 지지가 있어야만 일어선다."}, "related": [], "referenced_by": []}, "GM_36": {"id": "GM_36", "num": 36, "name_en": "Walks Series: Without Support", "name_ko": "독립 보행", "alias": "Walk Unsupported", "desc": "독립 보행 (5걸음 이상)", "cluster_id": "Cluster_Walk_Forward", "materials": "None", "instructions": "If the child is not walking freely, have the caregiver stand the child on the floor and hold the child's hands so that the child's arms are extended in front at shoulder height.\nEncourage the child to walk toward the caregiver. If the child walks with coordinated steps, have the caregiver slowly release grasp on the child's hands according to the child's ability to walk unsupported.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 5 steps without support with good coordination and without using arms for balance.", "1": "Takes at least 3 steps without support but without good coordination and uses arms for balance (e.g., medium or high guard).", "0": "Does not take at least 3 steps without support, gait is asymmetric, or does not attempt to walk."}, "scores_ko": {"2": "지지 없이 협응이 좋은 걸음으로 5걸음 이상 걸으며, 균형을 잡기 위해 팔을 사용하지 않는다.", "1": "지지 없이 3걸음 이상 걷지만 협응이 좋지 않고, 균형을 잡기 위해 팔을 사용한다(예: 팔을 중간 또는 높은 위치로 듦).", "0": "지지 없이 3걸음 이상 걷지 못하거나, 걸음이 비대칭이거나, 걷기를 시도하지 않는다."}, "related": ["GM_46"], "referenced_by": ["GM_31", "GM_32"]}, "GM_37": {"id": "GM_37", "num": 37, "name_en": "Throws Ball Forward", "name_ko": "공 앞으로 던지기", "alias": "Throw Ball", "desc": "공 앞으로 던지기", "cluster_id": null, "materials": "Small ball", "instructions": "Using an overhand motion, throw the ball gently so that it lands in front of the child. Allow him or her to retrieve it. If the child does not retrieve the ball, hand the ball to the child and encourage him or her to throw it. If the child does not throw the ball, retrieve it, throw it to the child again, and urge him or her to throw it back.", "caregiver_question": "Is [insert child's name] able to successfully throw a ball forward almost every time [he/she] tries, some of the time, or none of the time? [ ]", "tracking": "", "scores_en": {"2": "Purposely throws ball forward using either an underhand or overhand motion. | Almost every time", "1": "Attempts to throw ball forward using either an underhand or overhand motion but ball goes straight up or backward. | Some of the time", "0": "Drops or rolls ball. | None of the time"}, "scores_ko": {"2": "아래로 또는 위로 팔을 휘두르는 동작으로 의도적으로 공을 앞으로 던진다. | 거의 매번", "1": "공을 앞으로 던지려 하지만 공이 수직 위나 뒤로 간다. | 가끔", "0": "공을 떨어뜨리거나 굴린다. | 전혀 하지 못함"}, "related": [], "referenced_by": []}, "GM_38": {"id": "GM_38", "num": 38, "name_en": "Unsupported Squat", "name_ko": "지지 없이 쪼그려 앉기", "alias": "Squat", "desc": "지지 없이 쪼그려 앉았다 일어서기", "cluster_id": null, "materials": "Object of interest", "instructions": "While the child is standing, place an object on the floor and encourage the child to pick it up.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Smoothly moves from standing to squatting to standing while maintaining balance without using any support.", "1": "Moves from standing to squatting to standing but may stumble a bit or need slight support, such as stabilizing with 1 hand on floor.", "0": "Sits down to retrieve object or needs support to pick up object."}, "scores_ko": {"2": "지지 없이 균형을 유지하며 서기→쪼그려 앉기→서기로 부드럽게 움직인다.", "1": "서기→쪼그려 앉기→서기로 움직이지만 약간 비틀거리거나, 한 손으로 바닥을 짚는 등의 약한 지지가 필요할 수 있다.", "0": "물체를 집으려고 바닥에 앉거나 물체를 집기 위해 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_40": {"id": "GM_40", "num": 40, "name_en": "Walks Backward", "name_ko": "뒤로 걷기", "alias": "Walk Backward", "desc": "뒤로 걷기 (3걸음 이상)", "cluster_id": "Cluster_Walk_Backward", "materials": "None", "instructions": "Demonstrate walking backward and encourage the child to walk backward alongside you. Encourage him or her to continue taking steps backward. The caregiver can hold the child's hand initially.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 3 steps backward without support and shows good balance.", "1": "Takes 2 steps backward without support; slight loss of balance acceptable.", "0": "Does not take at least 2 steps backward without support or walks backward and loses balance after 1 to 2 steps."}, "scores_ko": {"2": "지지 없이 균형을 잘 유지하며 뒤로 3걸음 이상 걷는다.", "1": "지지 없이 뒤로 2걸음 걷는다. 약간의 균형 상실은 허용된다.", "0": "지지 없이 뒤로 2걸음 이상 걷지 못하거나, 뒤로 1~2걸음 걸은 뒤 균형을 잃는다."}, "related": ["GM_51"], "referenced_by": ["GM_31", "GM_32"]}, "GM_43": {"id": "GM_43", "num": 43, "name_en": "Balances on Each Foot With Support", "name_ko": "지지 한 발 서기", "alias": "Single Foot Balance (Supported)", "desc": "지지 하에 한 발 서기 (2초)", "cluster_id": null, "materials": "Timer", "instructions": "* Trial 1 : Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child.\n* Trial 2 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot with support for at least 2 seconds.", "1": "Balances on only right or only left foot with support for at least 2 seconds.", "0": "Does not balance on either foot for at least 2 seconds or balances on either foot but requires support beyond just holding child's hand."}, "scores_ko": {"2": "지지를 받으며 왼발과 오른발 각각에서 2초 이상 균형을 유지한다.", "1": "지지를 받으며 왼발 또는 오른발 한쪽에서만 2초 이상 균형을 유지한다.", "0": "어느 발에서도 2초 이상 균형을 유지하지 못하거나, 한 발로 서지만 손을 잡아 주는 것 이상의 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_45": {"id": "GM_45", "num": 45, "name_en": "Kicks Ball", "name_ko": "공 차기", "alias": "Kick Ball", "desc": "공 차기 (2피트 이상)", "cluster_id": null, "materials": "Large ball", "instructions": "Place the ball on the floor. Gently swing your foot behind you and then out in front to kick the ball. Retrieve the ball and place it in front of the child. Encourage the child to kick the ball, reminding him or her to kick gently. The child may attempt to kick the ball up to 3 times.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Maintains balance while kicking ball in a forward direction at least 2 ft.", "1": "Kicks ball, but it moves forward less than 2 ft or child loses balance in the process of kicking.", "0": "Makes kicking motion but misses ball, or kicks ball but requires support to maintain balance."}, "scores_ko": {"2": "균형을 유지하면서 공을 앞으로 2피트 이상 찬다.", "1": "공을 차지만 앞으로 이동한 거리가 2피트 미만이거나, 차는 과정에서 균형을 잃는다.", "0": "차는 동작을 하지만 공을 맞히지 못하거나, 공을 차지만 균형 유지를 위해 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_46": {"id": "GM_46", "num": 46, "name_en": "Walks on Path: Forward", "name_ko": "직선 경로 앞으로 걷기", "alias": "Walk Path Forward", "desc": "발판/직선 경로 따라 앞으로 걷기", "cluster_id": "Cluster_Walk_Forward", "materials": "Stepping path", "instructions": "Place the stepping path on the floor. Walk forward along its entire length, taking small strides and placing both feet on the stepping path. Say, Now you try. Remind the child to keep both feet on the path.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 2 steps with both feet on stepping path and keeps 1 foot on path for at least 5 ft.", "1": "Walks for at least 5 ft and keeps at least 1 foot on stepping path.", "0": "Does not keep 1 foot on stepping path or does not walk a distance of at least 5 ft."}, "scores_ko": {"2": "양발을 경로 위에 두고 2걸음 이상 걸으며, 적어도 한 발을 경로 위에 유지한 채 5피트 이상 이동한다.", "1": "5피트 이상 걸으면서 적어도 한 발을 경로 위에 유지한다.", "0": "한 발을 경로 위에 유지하지 못하거나 5피트 이상 걷지 못한다."}, "related": ["GM_36"], "referenced_by": []}, "GM_47": {"id": "GM_47", "num": 47, "name_en": "Jumps Forward Series: 6 Inches", "name_ko": "앞으로 멀리뛰기 (6인치)", "alias": "Jump Forward 6in", "desc": "앞으로 두 발 멀리뛰기 (6인치)", "cluster_id": "Cluster_Jump_Series", "materials": "Stepping path", "instructions": "* Trial 1 : Place the stepping path on the floor. Point to the beginning of the stepping path and say, Stand right here and jump as far as you can. Make sure that the child's feet are together and at the beginning of the stepping path. You may demonstrate this item a maximum of 3 times. The child may jump with feet together or lead with 1 foot, as long as both feet are in the air at some point during the jump.\n* Trials 2-3 : For each trial, say, Do it again. See how far you can jump.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Jumps at least 6 in. for any trial.", "1": "Jumps 1 to 5 in. for any trial.", "0": "Does not jump any distance for any trial."}, "scores_ko": {"2": "어느 한 시행에서든 6인치 이상 뛴다.", "1": "어느 한 시행에서든 1~5인치 뛴다.", "0": "어느 시행에서도 거리를 두고 뛰지 못한다."}, "related": ["GM_48", "GM_58"], "referenced_by": []}, "GM_48": {"id": "GM_48", "num": 48, "name_en": "Jumps: Both Feet", "name_ko": "두 발 제자리 뛰기", "alias": "Jump Both Feet", "desc": "두 발 모아 제자리 뛰기", "cluster_id": "Cluster_Jump_Series", "materials": "None", "instructions": "While the child is standing, take a small jump and say, Watch me jump. Now it's your turn.", "caregiver_question": "Ask the caregiver, Is [insert child's name] able to jump off the floor with both feet in the air at the same time almost every time [he/she] tries, some of the time, or none of the time?\nIs [insert child's name] able to jump off the floor with both feet in the air at the same time almost every time [he/she] tries, some of the time, or none of the time? [ ]", "tracking": "", "scores_en": {"2": "Jumps off floor with feet together or leads with 1 foot and both feet are in the air at some point during the jump. | Almost every time", "1": "Jumps but only 1 foot is in the air. | Some of the time", "0": "Bends legs in an attempt to jump, but both feet remain in contact with floor. | None of the time"}, "scores_ko": {"2": "두 발을 모으거나 한 발이 먼저 나가며 뛰되, 도약 중 한순간에는 두 발 모두 공중에 있다. | 거의 매번", "1": "뛰지만 한 발만 공중에 있다. | 가끔", "0": "뛰려고 다리를 굽히지만 두 발 모두 계속 바닥에 닿아 있다. | 전혀 하지 못함"}, "related": ["GM_47", "GM_58"], "referenced_by": []}, "GM_49": {"id": "GM_49", "num": 49, "name_en": "Balances on Each Foot Without Support: 2s", "name_ko": "독립 한 발 서기 (2초)", "alias": "Single Foot Balance 2s", "desc": "지지 없이 한 발 서기 (2초)", "cluster_id": "Cluster_Balance_Unsup", "materials": "Timer", "instructions": "* Trial 1 :Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child. According to the child's ability to balance, release hand so that the child balances on 1 foot without support.\n* Trials 2-3 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot without support for at least 2 seconds.", "1": "Balances on only right or only left foot without support for at least 2 seconds.", "0": "Does not balance on either foot for at least 2 seconds or requires support to maintain balance."}, "scores_ko": {"2": "지지 없이 왼발과 오른발 각각에서 2초 이상 균형을 유지한다.", "1": "지지 없이 왼발 또는 오른발 한쪽에서만 2초 이상 균형을 유지한다.", "0": "어느 발에서도 2초 이상 균형을 유지하지 못하거나 균형 유지를 위해 지지가 필요하다."}, "related": ["GM_56"], "referenced_by": []}, "GM_50": {"id": "GM_50", "num": 50, "name_en": "Walks on Tiptoes", "name_ko": "까치발 걷기", "alias": "Walk Tiptoes", "desc": "발끝(까치발)으로 걷기 (4걸음)", "cluster_id": null, "materials": "Stepping path", "instructions": "Place the stepping path on the floor.  Walk on your tiptoes along the entire length of the stepping path as you say, See? I'm walking on my tiptoes. You do it. Tiptoe all the way down this line.\nThe child does not have to stay on the stepping path to receive credit.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 4 steps without touching heels to floor.", "1": "Takes 1 to 3 steps without touching heels to floor.", "0": "Does not take any steps without touching heels to floor."}, "scores_ko": {"2": "뒤꿈치가 바닥에 닿지 않은 상태로 4걸음 이상 걷는다.", "1": "뒤꿈치가 바닥에 닿지 않은 상태로 1~3걸음 걷는다.", "0": "뒤꿈치가 바닥에 닿지 않은 상태로는 한 걸음도 걷지 못한다."}, "related": [], "referenced_by": []}, "GM_51": {"id": "GM_51", "num": 51, "name_en": "Walks on Path: Backward", "name_ko": "직선 경로 뒤로 걷기", "alias": "Walk Path Backward", "desc": "발판/직선 경로 따라 뒤로 걷기", "cluster_id": "Cluster_Walk_Backward", "materials": "Stepping path", "instructions": "Place the stepping path on the floor. Walk backward for the entire length of the stepping path, taking small strides and placing both feet on the stepping path.(heel to toe) Say, Now it's your turn. Remind the child to keep both feet on the path.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Walks backward within approximately 6 in. of stepping path for at least 5 ft.", "1": "Walks backward close to path for several steps.", "0": "Stumbles walking backward, requires support, or cannot walk backward."}, "scores_ko": {"2": "경로에서 약 6인치 이내를 유지하며 뒤로 5피트 이상 걷는다.", "1": "경로 가까이에서 뒤로 여러 걸음 걷는다.", "0": "뒤로 걸으며 비틀거리거나, 지지가 필요하거나, 뒤로 걷지 못한다."}, "related": ["GM_40"], "referenced_by": []}, "GM_56": {"id": "GM_56", "num": 56, "name_en": "Balances on Each Foot Without Support: 6s", "name_ko": "독립 한 발 서기 (6초)", "alias": "Single Foot Balance 6s", "desc": "지지 없이 한 발 서기 (6초)", "cluster_id": "Cluster_Balance_Unsup", "materials": "Timer", "instructions": "* Trial 1: Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child. According to the child's ability to balance, release hand so that the child balances on 1 foot without support.\n* Trials 2-3 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot without support for at least 6 seconds.", "1": "Balances on only right or only left foot without support for at least 6 seconds.", "0": "Does not balance on either foot for at least 6 seconds or requires support to maintain balance."}, "scores_ko": {"2": "지지 없이 왼발과 오른발 각각에서 6초 이상 균형을 유지한다.", "1": "지지 없이 왼발 또는 오른발 한쪽에서만 6초 이상 균형을 유지한다.", "0": "어느 발에서도 6초 이상 균형을 유지하지 못하거나 균형 유지를 위해 지지가 필요하다."}, "related": ["GM_49"], "referenced_by": []}, "GM_58": {"id": "GM_58", "num": 58, "name_en": "Jumps Forward Series: 24 Inches", "name_ko": "앞으로 멀리뛰기 (24인치)", "alias": "Jump Forward 24in", "desc": "앞으로 두 발 멀리뛰기 (24인치)", "cluster_id": "Cluster_Jump_Series", "materials": "Stepping path", "instructions": "* Trial 1 : Place the stepping path on the floor. Point to the beginning of the stepping path and say, Stand right here and jump as far as you can. Make sure that the child's feet are together and at the beginning of the stepping path. You may demonstrate this item a maximum of 3 times. The child may jump with feet together or lead with 1 foot, as long as both feet are in the air at some point during the jump.\n* Trials 2-3 : For each trial, say, Do it again. See how far you can jump.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Jumps at least 24 in. for any trial.", "1": "Jumps 12 to 23 in. for any trial.", "0": "Does not jump at least 12 in. for any trial."}, "scores_ko": {"2": "어느 한 시행에서든 24인치 이상 뛴다.", "1": "어느 한 시행에서든 12~23인치 뛴다.", "0": "어느 시행에서도 12인치 이상 뛰지 못한다."}, "related": ["GM_47", "GM_48"], "referenced_by": []}}, "clusters": [{"id": "Cluster_Standing_Stepping", "title": "Supported Stepping & Weight Bearing Standing Task", "alias": "Stepping & Standing Series", "ko": "지지 발걸음 · 기립 시리즈", "desc": "보호자 지지 하 체중 지지, 초기 발 내딛기, 독립 기립 유지 반응 연속 평가 (Related Item: 25, 28, 34)", "actions": ["GM_25", "GM_28", "GM_34"], "color": "#4f46e5", "bg": "#eef2ff", "darkBg": "rgba(79,70,229,0.16)", "order": 1}, {"id": "Cluster_Sit_Quadruped_Pull_to_Stand", "title": "Transitions: Sitting to Quadruped & Pull to Stand", "alias": "Sit-to-Crawl & Pull-to-Stand", "ko": "자세 전환 · 잡고 일어서기", "desc": "앉은 자세에서 네발기기 전환 및 물체를 잡고 일어서기 반응 연속 평가 (Related Item: 27, 30)", "actions": ["GM_27", "GM_30"], "color": "#0d9488", "bg": "#f0fdfa", "darkBg": "rgba(13,148,136,0.16)", "order": 2}, {"id": "Cluster_Supported_Walking_Cruising", "title": "Supported Walking & Cruising Task", "alias": "Supported Walk & Cruise", "ko": "지지 보행 · 크루징", "desc": "보호자 손 지지 보행 및 가구를 짚고 옆으로 걷기(크루징) 평가 (Related Item: 31, 32)", "actions": ["GM_31", "GM_32"], "color": "#d97706", "bg": "#fffbeb", "darkBg": "rgba(217,119,6,0.16)", "order": 3}, {"id": "Cluster_Walk_Forward", "title": "Forward Walking & Path Task", "alias": "Forward Walk & Path", "ko": "독립 전진 보행 · 경로 걷기", "desc": "독립 자유 보행 및 직선 경로 유지 전진 보행 평가 (Related Item: 36, 46)", "actions": ["GM_36", "GM_46"], "color": "#2563eb", "bg": "#eff6ff", "darkBg": "rgba(37,99,235,0.16)", "order": 4}, {"id": "Cluster_Walk_Backward", "title": "Backward Walking & Path Task", "alias": "Backward Walk & Path", "ko": "후진 보행 · 경로 뒤로 걷기", "desc": "독립 후진 보행 및 직선 경로 유지 후진 보행 평가 (Related Item: 40, 51)", "actions": ["GM_40", "GM_51"], "color": "#7c3aed", "bg": "#f5f3ff", "darkBg": "rgba(124,58,237,0.16)", "order": 5}, {"id": "Cluster_Jump_Series", "title": "Two-Foot Jumping Series", "alias": "Jump Series", "ko": "두 발 점프 · 멀리뛰기 시리즈", "desc": "제자리 두 발 점프 및 거리별(6인치 vs 24인치) 도약 능력 종합 평가 (Related Item: 47, 48, 58)", "actions": ["GM_47", "GM_48", "GM_58"], "color": "#e11d48", "bg": "#fff1f2", "darkBg": "rgba(225,29,72,0.16)", "order": 6}, {"id": "Cluster_Balance_Unsup", "title": "Unsupported One-Foot Balance Series", "alias": "Single Foot Balance (2s vs 6s)", "ko": "독립 한 발 서기 (2초 vs 6초)", "desc": "지지 없는 한 발 서기 유지 시간(2초 vs 6초) 비교 평가 (Related Item: 49, 56)", "actions": ["GM_49", "GM_56"], "color": "#059669", "bg": "#ecfdf5", "darkBg": "rgba(5,150,105,0.16)", "order": 7}], "actionOrder": ["GM_23", "GM_24", "GM_25", "GM_27", "GM_28", "GM_29", "GM_30", "GM_31", "GM_32", "GM_34", "GM_35", "GM_36", "GM_37", "GM_38", "GM_40", "GM_43", "GM_45", "GM_46", "GM_47", "GM_48", "GM_49", "GM_50", "GM_51", "GM_56", "GM_58"]};
+const BASE_DATA = {"rawActions": {"GM_23": {"name": "Rolls: Back to Stomach", "alias": "Roll Back to Stomach", "desc": "등 대고 누운 자세에서 엎드린 자세로 뒤집기"}, "GM_24": {"name": "Unsupported Sitting Series: 30 Seconds", "alias": "Sit Unsupported 30s", "desc": "지지 없이 등을 펴고 30초 이상 앉아 있기"}, "GM_25": {"name": "Early Stepping Movements", "alias": "Early Stepping", "desc": "겨드랑이 지지 하에 앞으로 내딛는 초기 발걸음 (4보 이상)"}, "GM_27": {"name": "Transitions from sitting to hands and knees", "alias": "Sit to Quadruped", "desc": "앉은 자세에서 네발기기 자세로 안정적인 전환"}, "GM_28": {"name": "Supports weight", "alias": "Weight Bearing Standing", "desc": "손으로 균형만 잡고 스스로 체중 지지하여 서기 (4초 이상)"}, "GM_29": {"name": "Crawls Series: crawl movement", "alias": "Crawl Movement", "desc": "손과 무릎(또는 발)으로 앞으로 기어가기 (5피트 이상)"}, "GM_30": {"name": "Raisees self to standing", "alias": "Pull to Stand", "desc": "물체/지지대를 붙잡고 스스로 일어서기"}, "GM_31": {"name": "Walks Series: with support", "alias": "Walk Supported", "desc": "보호자 손 지지 하에 조화롭게 걷기 (4보 이상)"}, "GM_32": {"name": "Walks sideways with support (cruises)", "alias": "Cruising Sideways", "desc": "지지대를 붙잡고 옆으로 걷기/크루징 (2보 이상)"}, "GM_34": {"name": "Stands alone", "alias": "Stand Alone", "desc": "지지 없이 스스로 혼자 서 있기 (5초 이상)"}, "GM_35": {"name": "Stands up alone", "alias": "Stand Up Alone", "desc": "바닥에 누운 상태에서 지지물 없이 혼자 일어서기"}, "GM_36": {"name": "Walks Series: Without Support", "alias": "Walk Unsupported", "desc": "독립 보행 (5걸음 이상)"}, "GM_37": {"name": "Throws Ball Forward", "alias": "Throw Ball", "desc": "공 앞으로 던지기"}, "GM_38": {"name": "Unsupported Squat", "alias": "Squat", "desc": "지지 없이 쪼그려 앉았다 일어서기"}, "GM_40": {"name": "Walks Backward", "alias": "Walk Backward", "desc": "뒤로 걷기 (3걸음 이상)"}, "GM_43": {"name": "Balances on Each Foot With Support", "alias": "Single Foot Balance (Supported)", "desc": "지지 하에 한 발 서기 (2초)"}, "GM_45": {"name": "Kicks Ball", "alias": "Kick Ball", "desc": "공 차기 (2피트 이상)"}, "GM_46": {"name": "Walks on Path: Forward", "alias": "Walk Path Forward", "desc": "발판/직선 경로 따라 앞으로 걷기"}, "GM_47": {"name": "Jumps Forward Series: 6 Inches", "alias": "Jump Forward 6in", "desc": "앞으로 두 발 멀리뛰기 (6인치)"}, "GM_48": {"name": "Jumps: Both Feet", "alias": "Jump Both Feet", "desc": "두 발 모아 제자리 뛰기"}, "GM_49": {"name": "Balances on Each Foot Without Support: 2s", "alias": "Single Foot Balance 2s", "desc": "지지 없이 한 발 서기 (2초)"}, "GM_50": {"name": "Walks on Tiptoes", "alias": "Walk Tiptoes", "desc": "발끝(까치발)으로 걷기 (4걸음)"}, "GM_51": {"name": "Walks on Path: Backward", "alias": "Walk Path Backward", "desc": "발판/직선 경로 따라 뒤로 걷기"}, "GM_56": {"name": "Balances on Each Foot Without Support: 6s", "alias": "Single Foot Balance 6s", "desc": "지지 없이 한 발 서기 (6초)"}, "GM_58": {"name": "Jumps Forward Series: 24 Inches", "alias": "Jump Forward 24in", "desc": "앞으로 두 발 멀리뛰기 (24인치)"}}, "actions": {"GM_23": {"id": "GM_23", "num": 23, "name_en": "Rolls: Back to Stomach", "name_ko": "뒤집기: 등→배", "alias": "Roll Back to Stomach", "desc": "등 대고 누운 자세에서 엎드린 자세로 뒤집기", "materials": "Bell, rattle", "instructions": "Observe if the child moves from back to stomach by rolling to the right or to the left. If not observed, shake the bell or rattle at one side of the child. if the child does not respond by rolling to stomach, repeat on the other side", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Consistently able to roll from back to stomach from either side", "1": "Inconsistently able to roll from back to stomach from eiter side or typically rolls from back to side", "0": "Does not roll from back to stomach"}, "scores_ko": {"2": "어느 쪽으로든 등을 대고 누운 자세에서 엎드린 자세로 일관되게 뒤집을 수 있다.", "1": "어느 쪽으로든 등에서 배로 뒤집기가 일관되지 않거나, 보통 등에서 옆으로만 돌아눕는다.", "0": "등을 대고 누운 자세에서 엎드린 자세로 뒤집지 못한다."}, "related": [], "referenced_by": []}, "GM_24": {"id": "GM_24", "num": 24, "name_en": "Unsupported Sitting Series: 30 Seconds", "name_ko": "혼자 앉기 (30초)", "alias": "Sit Unsupported 30s", "desc": "지지 없이 등을 펴고 30초 이상 앉아 있기", "materials": "Timer", "instructions": "with the child seated, provide pelvic support by placing your hands around the child's lower back. According to the child's ability to sit alone, gradually loosen your hold. if the child loses balance once or twice but is able to self-right (does not fall over), give credit.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "sits without support for at least 30 seconds with back straight", "1": "Sits without support for 11 to 29 seconds with eiter back straight or leaning forward slightly", "0": "Sits without support for 0 to 10 seconds."}, "scores_ko": {"2": "등을 곧게 펴고 지지 없이 30초 이상 앉아 있다.", "1": "등을 곧게 펴거나 약간 앞으로 기울인 채 지지 없이 11~29초 앉아 있다.", "0": "지지 없이 앉아 있는 시간이 0~10초이다."}, "related": [], "referenced_by": []}, "GM_25": {"id": "GM_25", "num": 25, "name_en": "Early Stepping Movements", "name_ko": "초기 발걸음", "alias": "Early Stepping", "desc": "겨드랑이 지지 하에 앞으로 내딛는 초기 발걸음 (4보 이상)", "materials": "None", "instructions": "Have the caregiver stand the child on the floor while supporting him or her by placing hands under the arms. Have the caregiver lean the child forward to encourage stepping movements. The child does not have to fully support weight.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Makes at least 4 stepping movements that propel forward", "1": "Makes at least 2 stepping movements that propel forward", "0": "Does not make at least 2 stepping movements or holds legs stiffly"}, "scores_ko": {"2": "앞으로 나아가는 발 내딛기 동작을 4회 이상 한다.", "1": "앞으로 나아가는 발 내딛기 동작을 2회 이상 한다.", "0": "발 내딛기 동작을 2회 이상 하지 못하거나 다리를 뻣뻣하게 유지한다."}, "related": ["GM_28", "GM_34"], "referenced_by": []}, "GM_27": {"id": "GM_27", "num": 27, "name_en": "Transitions from sitting to hands and knees", "name_ko": "앉기→네발기기 전환", "alias": "Sit to Quadruped", "desc": "앉은 자세에서 네발기기 자세로 안정적인 전환", "materials": "Object of interest", "instructions": "Observe if the child moves from a seated position to hands and knees if you do not observe this, place an object jus out of the child's reach and encourage the child to get the object.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Moves from a seated position to hands and knees with good balance", "1": "Does not move from a seated position to hands and knees with good balance", "0": "Loses balance when changing position or does not move from seated position to hands and knees."}, "scores_ko": {"2": "균형을 잘 유지하며 앉은 자세에서 손과 무릎을 짚는 자세로 전환한다.", "1": "앉은 자세에서 손과 무릎을 짚는 자세로 전환할 때 좋은 균형을 보이지 못한다.", "0": "자세를 바꿀 때 균형을 잃거나 앉은 자세에서 손과 무릎을 짚는 자세로 전환하지 못한다."}, "related": ["GM_30", "GM_33"], "referenced_by": []}, "GM_28": {"id": "GM_28", "num": 28, "name_en": "Supports weight", "name_ko": "체중 지지 서기", "alias": "Weight Bearing Standing", "desc": "손으로 균형만 잡고 스스로 체중 지지하여 서기 (4초 이상)", "materials": "Timer", "instructions": "Stand the child on the floor and hold hands so that the child's arms are extended in front at shoulder height. If the child appears able to support own weight while standing, slowly loosen your hold. observe if the child stands momentarily, using your hands for bvalance but not for support. Begin timing.\nkeep your hands clos to the child in case he or she loses balance.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Supports own weight for at least 4 seconds using your hands for balance only.", "1": "supports own weight for 2 to 3 seconds using your hands for balance only.", "0": "supports own weight for 0 to 1 seconds using your hands for balance only or requires support to remain standing."}, "scores_ko": {"2": "검사자의 손은 균형 유지에만 이용하면서 자신의 체중을 4초 이상 지탱한다.", "1": "검사자의 손은 균형 유지에만 이용하면서 자신의 체중을 2~3초 지탱한다.", "0": "검사자의 손을 균형 유지에만 이용하여 체중을 지탱하는 시간이 0~1초이거나, 서 있기 위해 체중 지지가 필요하다."}, "related": ["GM_20", "GM_25", "GM_34"], "referenced_by": []}, "GM_29": {"id": "GM_29", "num": 29, "name_en": "Crawls Series: crawl movement", "name_ko": "네발 기어가기", "alias": "Crawl Movement", "desc": "손과 무릎(또는 발)으로 앞으로 기어가기 (5피트 이상)", "materials": "Object of interest", "instructions": "Place an object of interest approximately 12 in. in front of the child out of his or her reach. place the object farter away if it looks like the child is bale to crawl. Encourage the child to get the object.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Crawl forward on hands and knees (or feet) for at least 5 ft.", "1": "Crawl forward on hands and knees (or feet) for less than least 5 ft.", "0": "Does not crawl forward on hands and knees (or feet)"}, "scores_ko": {"2": "손과 무릎(또는 발)으로 5피트 이상 앞으로 기어간다.", "1": "손과 무릎(또는 발)으로 앞으로 기어가지만 거리가 5피트 미만이다.", "0": "손과 무릎(또는 발)으로 앞으로 기어가지 못한다."}, "related": [], "referenced_by": []}, "GM_30": {"id": "GM_30", "num": 30, "name_en": "Raisees self to standing", "name_ko": "잡고 일어서기", "alias": "Pull to Stand", "desc": "물체/지지대를 붙잡고 스스로 일어서기", "materials": "object of interest", "instructions": "Observe if the child pulls to a standing position from a seated position using a chair, table leg, or other convenient object for support. if you do not observe this, enlist the caregiver so that the child can pull up on him or her. Encourage the child to get up, or place the child next to a stable chair and place an object on the edge of the chail to entice the child to get up", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Rises to a standing position using a chair or other convenient object for support", "1": "Attempts to rise to a standing position but cannot pull up completely", "0": "Does not attempt to rise to a standing position or loses balance immediately"}, "scores_ko": {"2": "의자나 적절한 물체를 지지대로 이용하여 선 자세로 일어난다.", "1": "일어서려고 시도하지만 완전히 일어서지 못한다.", "0": "일어서기를 시도하지 않거나 즉시 균형을 잃는다."}, "related": ["GM_27", "GM_33"], "referenced_by": []}, "GM_31": {"id": "GM_31", "num": 31, "name_en": "Walks Series: with support", "name_ko": "지지 보행", "alias": "Walk Supported", "desc": "보호자 손 지지 하에 조화롭게 걷기 (4보 이상)", "materials": "None", "instructions": "If the child is not walking freely, have the caregiver stand the child on the floor and hold the child's hands so that the child's arms are extended in front at shoulder height.\nEncourage the child to walk toward the caregiver. if the child walks with coordinated steps, have the caregiver slowly release grasp on the child's hands according to the child's ability to walk unsupported", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 4 steps with support with good coordination.", "1": "Takes at least 2 steps with support with good coordination or more than 2 steps without good coordination", "0": "Does not take any steps or relies completely on support to move forward."}, "scores_ko": {"2": "지지를 받으며 협응이 좋은 걸음으로 4걸음 이상 걷는다.", "1": "지지를 받으며 협응이 좋은 걸음으로 2걸음 이상 걷거나, 협응이 좋지 않은 걸음으로 2걸음 초과 걷는다.", "0": "발걸음을 내딛지 못하거나 앞으로 이동할 때 지지에 완전히 의존한다."}, "related": ["GM_32", "GM_36", "GM_40"], "referenced_by": []}, "GM_32": {"id": "GM_32", "num": 32, "name_en": "Walks sideways with support (cruises)", "name_ko": "옆으로 걷기 (크루징)", "alias": "Cruising Sideways", "desc": "지지대를 붙잡고 옆으로 걷기/크루징 (2보 이상)", "materials": "object of interest", "instructions": "Stand the child next to support(e.g. 2 chairs placed side by side tabe) and observe if the child moves from one point to another by walking side ways. if the child can stand with support but does not walk, place an object of interest on the furniture just out of reach so that he or she must walk sideways to reach the object of interest", "caregiver_question": "", "tracking": "", "scores_en": {"2": "walks sideways at least 2steps with support", "1": "Attempt to walk side ways but does not take at least 2 steps", "0": "Does not walk sideways"}, "scores_ko": {"2": "지지를 받으며 옆으로 2걸음 이상 걷는다.", "1": "옆으로 걷기를 시도하지만 2걸음 이상 내딛지 못한다.", "0": "옆으로 걷지 못한다."}, "related": ["GM_31", "GM_36", "GM_40"], "referenced_by": []}, "GM_34": {"id": "GM_34", "num": 34, "name_en": "Stands alone", "name_ko": "혼자 서기", "alias": "Stand Alone", "desc": "지지 없이 스스로 혼자 서 있기 (5초 이상)", "materials": "Timer", "instructions": "Have the caregiver stand the child on the floor on the floor and hold the child's hands so that the child's arms are extended infron at shulder height. have the caregiver slowly release grasp on the child's hands. begin timing", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Stands alone for at least 5 seconds after hands are released.", "1": "Stands alone for 3 to 4 seconds after hands are released.", "0": "Stands alone for 0 to 2 seconds"}, "scores_ko": {"2": "잡은 손을 놓은 뒤 혼자 5초 이상 서 있다.", "1": "잡은 손을 놓은 뒤 혼자 3~4초 서 있다.", "0": "혼자 서 있는 시간이 0~2초이다."}, "related": ["GM_20", "GM_25", "GM_28"], "referenced_by": []}, "GM_35": {"id": "GM_35", "num": 35, "name_en": "Stands up alone", "name_ko": "혼자 일어서기", "alias": "Stand Up Alone", "desc": "바닥에 누운 상태에서 지지물 없이 혼자 일어서기", "materials": "None", "instructions": "In a playful manner, place the child on his or her back on his or her back on the floor away from any objects that could be used for support. Encourage the child to stand up.\nIf the child sits straight up, without first rolling into a prone or quadruped (hands and feet on floor) position before standing, score 2 points.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Rolls to 1 side and stands without using any support", "1": "Rolls into a prone or quadruped (hands and feet on floor) position and stands without using any support", "0": "Does not stand up or stands up only with support."}, "scores_ko": {"2": "한쪽으로 돌아누운 뒤 아무 지지도 이용하지 않고 일어선다.", "1": "엎드리거나 네발 자세(손과 발을 바닥에 댄 자세)로 돌아선 뒤 지지 없이 일어선다.", "0": "일어서지 못하거나 지지가 있어야만 일어선다."}, "related": [], "referenced_by": []}, "GM_36": {"id": "GM_36", "num": 36, "name_en": "Walks Series: Without Support", "name_ko": "독립 보행", "alias": "Walk Unsupported", "desc": "독립 보행 (5걸음 이상)", "materials": "None", "instructions": "If the child is not walking freely, have the caregiver stand the child on the floor and hold the child's hands so that the child's arms are extended in front at shoulder height.\nEncourage the child to walk toward the caregiver. If the child walks with coordinated steps, have the caregiver slowly release grasp on the child's hands according to the child's ability to walk unsupported.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 5 steps without support with good coordination and without using arms for balance.", "1": "Takes at least 3 steps without support but without good coordination and uses arms for balance (e.g., medium or high guard).", "0": "Does not take at least 3 steps without support, gait is asymmetric, or does not attempt to walk."}, "scores_ko": {"2": "지지 없이 협응이 좋은 걸음으로 5걸음 이상 걸으며, 균형을 잡기 위해 팔을 사용하지 않는다.", "1": "지지 없이 3걸음 이상 걷지만 협응이 좋지 않고, 균형을 잡기 위해 팔을 사용한다(예: 팔을 중간 또는 높은 위치로 듦).", "0": "지지 없이 3걸음 이상 걷지 못하거나, 걸음이 비대칭이거나, 걷기를 시도하지 않는다."}, "related": ["GM_46"], "referenced_by": ["GM_31", "GM_32"]}, "GM_37": {"id": "GM_37", "num": 37, "name_en": "Throws Ball Forward", "name_ko": "공 앞으로 던지기", "alias": "Throw Ball", "desc": "공 앞으로 던지기", "materials": "Small ball", "instructions": "Using an overhand motion, throw the ball gently so that it lands in front of the child. Allow him or her to retrieve it. If the child does not retrieve the ball, hand the ball to the child and encourage him or her to throw it. If the child does not throw the ball, retrieve it, throw it to the child again, and urge him or her to throw it back.", "caregiver_question": "Is [insert child's name] able to successfully throw a ball forward almost every time [he/she] tries, some of the time, or none of the time? [ ]", "tracking": "", "scores_en": {"2": "Purposely throws ball forward using either an underhand or overhand motion. | Almost every time", "1": "Attempts to throw ball forward using either an underhand or overhand motion but ball goes straight up or backward. | Some of the time", "0": "Drops or rolls ball. | None of the time"}, "scores_ko": {"2": "아래로 또는 위로 팔을 휘두르는 동작으로 의도적으로 공을 앞으로 던진다. | 거의 매번", "1": "공을 앞으로 던지려 하지만 공이 수직 위나 뒤로 간다. | 가끔", "0": "공을 떨어뜨리거나 굴린다. | 전혀 하지 못함"}, "related": [], "referenced_by": []}, "GM_38": {"id": "GM_38", "num": 38, "name_en": "Unsupported Squat", "name_ko": "지지 없이 쪼그려 앉기", "alias": "Squat", "desc": "지지 없이 쪼그려 앉았다 일어서기", "materials": "Object of interest", "instructions": "While the child is standing, place an object on the floor and encourage the child to pick it up.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Smoothly moves from standing to squatting to standing while maintaining balance without using any support.", "1": "Moves from standing to squatting to standing but may stumble a bit or need slight support, such as stabilizing with 1 hand on floor.", "0": "Sits down to retrieve object or needs support to pick up object."}, "scores_ko": {"2": "지지 없이 균형을 유지하며 서기→쪼그려 앉기→서기로 부드럽게 움직인다.", "1": "서기→쪼그려 앉기→서기로 움직이지만 약간 비틀거리거나, 한 손으로 바닥을 짚는 등의 약한 지지가 필요할 수 있다.", "0": "물체를 집으려고 바닥에 앉거나 물체를 집기 위해 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_40": {"id": "GM_40", "num": 40, "name_en": "Walks Backward", "name_ko": "뒤로 걷기", "alias": "Walk Backward", "desc": "뒤로 걷기 (3걸음 이상)", "materials": "None", "instructions": "Demonstrate walking backward and encourage the child to walk backward alongside you. Encourage him or her to continue taking steps backward. The caregiver can hold the child's hand initially.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 3 steps backward without support and shows good balance.", "1": "Takes 2 steps backward without support; slight loss of balance acceptable.", "0": "Does not take at least 2 steps backward without support or walks backward and loses balance after 1 to 2 steps."}, "scores_ko": {"2": "지지 없이 균형을 잘 유지하며 뒤로 3걸음 이상 걷는다.", "1": "지지 없이 뒤로 2걸음 걷는다. 약간의 균형 상실은 허용된다.", "0": "지지 없이 뒤로 2걸음 이상 걷지 못하거나, 뒤로 1~2걸음 걸은 뒤 균형을 잃는다."}, "related": ["GM_51"], "referenced_by": ["GM_31", "GM_32"]}, "GM_43": {"id": "GM_43", "num": 43, "name_en": "Balances on Each Foot With Support", "name_ko": "지지 한 발 서기", "alias": "Single Foot Balance (Supported)", "desc": "지지 하에 한 발 서기 (2초)", "materials": "Timer", "instructions": "* Trial 1 : Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child.\n* Trial 2 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot with support for at least 2 seconds.", "1": "Balances on only right or only left foot with support for at least 2 seconds.", "0": "Does not balance on either foot for at least 2 seconds or balances on either foot but requires support beyond just holding child's hand."}, "scores_ko": {"2": "지지를 받으며 왼발과 오른발 각각에서 2초 이상 균형을 유지한다.", "1": "지지를 받으며 왼발 또는 오른발 한쪽에서만 2초 이상 균형을 유지한다.", "0": "어느 발에서도 2초 이상 균형을 유지하지 못하거나, 한 발로 서지만 손을 잡아 주는 것 이상의 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_45": {"id": "GM_45", "num": 45, "name_en": "Kicks Ball", "name_ko": "공 차기", "alias": "Kick Ball", "desc": "공 차기 (2피트 이상)", "materials": "Large ball", "instructions": "Place the ball on the floor. Gently swing your foot behind you and then out in front to kick the ball. Retrieve the ball and place it in front of the child. Encourage the child to kick the ball, reminding him or her to kick gently. The child may attempt to kick the ball up to 3 times.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Maintains balance while kicking ball in a forward direction at least 2 ft.", "1": "Kicks ball, but it moves forward less than 2 ft or child loses balance in the process of kicking.", "0": "Makes kicking motion but misses ball, or kicks ball but requires support to maintain balance."}, "scores_ko": {"2": "균형을 유지하면서 공을 앞으로 2피트 이상 찬다.", "1": "공을 차지만 앞으로 이동한 거리가 2피트 미만이거나, 차는 과정에서 균형을 잃는다.", "0": "차는 동작을 하지만 공을 맞히지 못하거나, 공을 차지만 균형 유지를 위해 지지가 필요하다."}, "related": [], "referenced_by": []}, "GM_46": {"id": "GM_46", "num": 46, "name_en": "Walks on Path: Forward", "name_ko": "직선 경로 앞으로 걷기", "alias": "Walk Path Forward", "desc": "발판/직선 경로 따라 앞으로 걷기", "materials": "Stepping path", "instructions": "Place the stepping path on the floor. Walk forward along its entire length, taking small strides and placing both feet on the stepping path. Say, Now you try. Remind the child to keep both feet on the path.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 2 steps with both feet on stepping path and keeps 1 foot on path for at least 5 ft.", "1": "Walks for at least 5 ft and keeps at least 1 foot on stepping path.", "0": "Does not keep 1 foot on stepping path or does not walk a distance of at least 5 ft."}, "scores_ko": {"2": "양발을 경로 위에 두고 2걸음 이상 걸으며, 적어도 한 발을 경로 위에 유지한 채 5피트 이상 이동한다.", "1": "5피트 이상 걸으면서 적어도 한 발을 경로 위에 유지한다.", "0": "한 발을 경로 위에 유지하지 못하거나 5피트 이상 걷지 못한다."}, "related": ["GM_36"], "referenced_by": []}, "GM_47": {"id": "GM_47", "num": 47, "name_en": "Jumps Forward Series: 6 Inches", "name_ko": "앞으로 멀리뛰기 (6인치)", "alias": "Jump Forward 6in", "desc": "앞으로 두 발 멀리뛰기 (6인치)", "materials": "Stepping path", "instructions": "* Trial 1 : Place the stepping path on the floor. Point to the beginning of the stepping path and say, Stand right here and jump as far as you can. Make sure that the child's feet are together and at the beginning of the stepping path. You may demonstrate this item a maximum of 3 times. The child may jump with feet together or lead with 1 foot, as long as both feet are in the air at some point during the jump.\n* Trials 2-3 : For each trial, say, Do it again. See how far you can jump.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Jumps at least 6 in. for any trial.", "1": "Jumps 1 to 5 in. for any trial.", "0": "Does not jump any distance for any trial."}, "scores_ko": {"2": "어느 한 시행에서든 6인치 이상 뛴다.", "1": "어느 한 시행에서든 1~5인치 뛴다.", "0": "어느 시행에서도 거리를 두고 뛰지 못한다."}, "related": ["GM_48", "GM_58"], "referenced_by": []}, "GM_48": {"id": "GM_48", "num": 48, "name_en": "Jumps: Both Feet", "name_ko": "두 발 제자리 뛰기", "alias": "Jump Both Feet", "desc": "두 발 모아 제자리 뛰기", "materials": "None", "instructions": "While the child is standing, take a small jump and say, Watch me jump. Now it's your turn.", "caregiver_question": "Ask the caregiver, Is [insert child's name] able to jump off the floor with both feet in the air at the same time almost every time [he/she] tries, some of the time, or none of the time?\nIs [insert child's name] able to jump off the floor with both feet in the air at the same time almost every time [he/she] tries, some of the time, or none of the time? [ ]", "tracking": "", "scores_en": {"2": "Jumps off floor with feet together or leads with 1 foot and both feet are in the air at some point during the jump. | Almost every time", "1": "Jumps but only 1 foot is in the air. | Some of the time", "0": "Bends legs in an attempt to jump, but both feet remain in contact with floor. | None of the time"}, "scores_ko": {"2": "두 발을 모으거나 한 발이 먼저 나가며 뛰되, 도약 중 한순간에는 두 발 모두 공중에 있다. | 거의 매번", "1": "뛰지만 한 발만 공중에 있다. | 가끔", "0": "뛰려고 다리를 굽히지만 두 발 모두 계속 바닥에 닿아 있다. | 전혀 하지 못함"}, "related": ["GM_47", "GM_58"], "referenced_by": []}, "GM_49": {"id": "GM_49", "num": 49, "name_en": "Balances on Each Foot Without Support: 2s", "name_ko": "독립 한 발 서기 (2초)", "alias": "Single Foot Balance 2s", "desc": "지지 없이 한 발 서기 (2초)", "materials": "Timer", "instructions": "* Trial 1 :Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child. According to the child's ability to balance, release hand so that the child balances on 1 foot without support.\n* Trials 2-3 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot without support for at least 2 seconds.", "1": "Balances on only right or only left foot without support for at least 2 seconds.", "0": "Does not balance on either foot for at least 2 seconds or requires support to maintain balance."}, "scores_ko": {"2": "지지 없이 왼발과 오른발 각각에서 2초 이상 균형을 유지한다.", "1": "지지 없이 왼발 또는 오른발 한쪽에서만 2초 이상 균형을 유지한다.", "0": "어느 발에서도 2초 이상 균형을 유지하지 못하거나 균형 유지를 위해 지지가 필요하다."}, "related": ["GM_56"], "referenced_by": []}, "GM_50": {"id": "GM_50", "num": 50, "name_en": "Walks on Tiptoes", "name_ko": "까치발 걷기", "alias": "Walk Tiptoes", "desc": "발끝(까치발)으로 걷기 (4걸음)", "materials": "Stepping path", "instructions": "Place the stepping path on the floor.  Walk on your tiptoes along the entire length of the stepping path as you say, See? I'm walking on my tiptoes. You do it. Tiptoe all the way down this line.\nThe child does not have to stay on the stepping path to receive credit.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Takes at least 4 steps without touching heels to floor.", "1": "Takes 1 to 3 steps without touching heels to floor.", "0": "Does not take any steps without touching heels to floor."}, "scores_ko": {"2": "뒤꿈치가 바닥에 닿지 않은 상태로 4걸음 이상 걷는다.", "1": "뒤꿈치가 바닥에 닿지 않은 상태로 1~3걸음 걷는다.", "0": "뒤꿈치가 바닥에 닿지 않은 상태로는 한 걸음도 걷지 못한다."}, "related": [], "referenced_by": []}, "GM_51": {"id": "GM_51", "num": 51, "name_en": "Walks on Path: Backward", "name_ko": "직선 경로 뒤로 걷기", "alias": "Walk Path Backward", "desc": "발판/직선 경로 따라 뒤로 걷기", "materials": "Stepping path", "instructions": "Place the stepping path on the floor. Walk backward for the entire length of the stepping path, taking small strides and placing both feet on the stepping path.(heel to toe) Say, Now it's your turn. Remind the child to keep both feet on the path.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Walks backward within approximately 6 in. of stepping path for at least 5 ft.", "1": "Walks backward close to path for several steps.", "0": "Stumbles walking backward, requires support, or cannot walk backward."}, "scores_ko": {"2": "경로에서 약 6인치 이내를 유지하며 뒤로 5피트 이상 걷는다.", "1": "경로 가까이에서 뒤로 여러 걸음 걷는다.", "0": "뒤로 걸으며 비틀거리거나, 지지가 필요하거나, 뒤로 걷지 못한다."}, "related": ["GM_40"], "referenced_by": []}, "GM_56": {"id": "GM_56", "num": 56, "name_en": "Balances on Each Foot Without Support: 6s", "name_ko": "독립 한 발 서기 (6초)", "alias": "Single Foot Balance 6s", "desc": "지지 없이 한 발 서기 (6초)", "materials": "Timer", "instructions": "* Trial 1: Stand beside the child and hold 1 hand. Ask the child to lift his or her left foot. You may demonstrate by lifting your left foot or pointing as you encourage the child. According to the child's ability to balance, release hand so that the child balances on 1 foot without support.\n* Trials 2-3 : Administer Trial 2 in the same manner as Trial 1, asking the child to lift his or her right foot.", "caregiver_question": "", "tracking": "Elapsed time (Trial 1):                    Elapsed time (Trial 2):", "scores_en": {"2": "Balances on both left and right foot without support for at least 6 seconds.", "1": "Balances on only right or only left foot without support for at least 6 seconds.", "0": "Does not balance on either foot for at least 6 seconds or requires support to maintain balance."}, "scores_ko": {"2": "지지 없이 왼발과 오른발 각각에서 6초 이상 균형을 유지한다.", "1": "지지 없이 왼발 또는 오른발 한쪽에서만 6초 이상 균형을 유지한다.", "0": "어느 발에서도 6초 이상 균형을 유지하지 못하거나 균형 유지를 위해 지지가 필요하다."}, "related": ["GM_49"], "referenced_by": []}, "GM_58": {"id": "GM_58", "num": 58, "name_en": "Jumps Forward Series: 24 Inches", "name_ko": "앞으로 멀리뛰기 (24인치)", "alias": "Jump Forward 24in", "desc": "앞으로 두 발 멀리뛰기 (24인치)", "materials": "Stepping path", "instructions": "* Trial 1 : Place the stepping path on the floor. Point to the beginning of the stepping path and say, Stand right here and jump as far as you can. Make sure that the child's feet are together and at the beginning of the stepping path. You may demonstrate this item a maximum of 3 times. The child may jump with feet together or lead with 1 foot, as long as both feet are in the air at some point during the jump.\n* Trials 2-3 : For each trial, say, Do it again. See how far you can jump.", "caregiver_question": "", "tracking": "", "scores_en": {"2": "Jumps at least 24 in. for any trial.", "1": "Jumps 12 to 23 in. for any trial.", "0": "Does not jump at least 12 in. for any trial."}, "scores_ko": {"2": "어느 한 시행에서든 24인치 이상 뛴다.", "1": "어느 한 시행에서든 12~23인치 뛴다.", "0": "어느 시행에서도 12인치 이상 뛰지 못한다."}, "related": ["GM_47", "GM_48"], "referenced_by": []}}, "clusters": [{"id": "Cluster_Standing_Stepping", "title": "Supported Stepping & Weight Bearing Standing Task", "alias": "Stepping & Standing Series", "ko": "지지 발걸음 · 기립 시리즈", "desc": "보호자 지지 하 체중 지지, 초기 발 내딛기, 독립 기립 유지 반응 연속 평가 (Related Item: 25, 28, 34)", "actions": ["GM_25", "GM_28", "GM_34"], "color": "#4f46e5", "order": 1}, {"id": "Cluster_Sit_Quadruped_Pull_to_Stand", "title": "Transitions: Sitting to Quadruped & Pull to Stand", "alias": "Sit-to-Crawl & Pull-to-Stand", "ko": "자세 전환 · 잡고 일어서기", "desc": "앉은 자세에서 네발기기 전환 및 물체를 잡고 일어서기 반응 연속 평가 (Related Item: 27, 30)", "actions": ["GM_27", "GM_30"], "color": "#0d9488", "order": 2}, {"id": "Cluster_Supported_Walking_Cruising", "title": "Supported Walking & Cruising Task", "alias": "Supported Walk & Cruise", "ko": "지지 보행 · 크루징", "desc": "보호자 손 지지 보행 및 가구를 짚고 옆으로 걷기(크루징) 평가 (Related Item: 31, 32)", "actions": ["GM_31", "GM_32"], "color": "#d97706", "order": 3}, {"id": "Cluster_Walk_Forward", "title": "Forward Walking & Path Task", "alias": "Forward Walk & Path", "ko": "독립 전진 보행 · 경로 걷기", "desc": "독립 자유 보행 및 직선 경로 유지 전진 보행 평가 (Related Item: 36, 46)", "actions": ["GM_36", "GM_46"], "color": "#2563eb", "order": 4}, {"id": "Cluster_Walk_Backward", "title": "Backward Walking & Path Task", "alias": "Backward Walk & Path", "ko": "후진 보행 · 경로 뒤로 걷기", "desc": "독립 후진 보행 및 직선 경로 유지 후진 보행 평가 (Related Item: 40, 51)", "actions": ["GM_40", "GM_51"], "color": "#7c3aed", "order": 5}, {"id": "Cluster_Jump_Series", "title": "Two-Foot Jumping Series", "alias": "Jump Series", "ko": "두 발 점프 · 멀리뛰기 시리즈", "desc": "제자리 두 발 점프 및 거리별(6인치 vs 24인치) 도약 능력 종합 평가 (Related Item: 47, 48, 58)", "actions": ["GM_47", "GM_48", "GM_58"], "color": "#e11d48", "order": 6}, {"id": "Cluster_Balance_Unsup", "title": "Unsupported One-Foot Balance Series", "alias": "Single Foot Balance (2s vs 6s)", "ko": "독립 한 발 서기 (2초 vs 6초)", "desc": "지지 없는 한 발 서기 유지 시간(2초 vs 6초) 비교 평가 (Related Item: 49, 56)", "actions": ["GM_49", "GM_56"], "color": "#059669", "order": 7}], "actionOrder": ["GM_23", "GM_24", "GM_25", "GM_27", "GM_28", "GM_29", "GM_30", "GM_31", "GM_32", "GM_34", "GM_35", "GM_36", "GM_37", "GM_38", "GM_40", "GM_43", "GM_45", "GM_46", "GM_47", "GM_48", "GM_49", "GM_50", "GM_51", "GM_56", "GM_58"]};
+const STORAGE_KEY = 'bayley_action_group_draft_v1';
+const PALETTE = [
+  '#4f46e5', '#0d9488', '#d97706', '#2563eb', '#7c3aed',
+  '#e11d48', '#059669', '#0891b2', '#ea580c', '#db2777', '#65a30d', '#475569'
+];
+
+const actions = BASE_DATA.actions;
+const actionOrder = BASE_DATA.actionOrder;
+
+function cloneClusters(list) {
+  return list.map(c => ({ ...c, actions: [...c.actions] }));
+}
+
+function serializeForExport(clusterList) {
+  const clustersObj = {};
+  for (const c of clusterList) {
+    clustersObj[c.id] = {
+      title: c.title || c.id,
+      alias: c.alias || c.ko || c.id,
+      actions: [...c.actions],
+      desc: c.desc || '',
+    };
+  }
+  return {
+    actions: BASE_DATA.rawActions,
+    clusters: clustersObj,
+  };
+}
+
+const originalExportStr = JSON.stringify(serializeForExport(BASE_DATA.clusters));
 
 const state = {
-  view: 'board',          // 'board' | 'graph' | 'sequence'
-  filter: 'all',          // 'all' | 'clustered' | 'standalone' | 'cross'
+  clusters: cloneClusters(BASE_DATA.clusters),
+  undoStack: [],
+  view: 'board',
+  filter: 'all',
   query: '',
-  selectedType: null,     // 'action' | 'cluster' | null
+  selectedType: null,
   selectedId: null,
-  hoveredId: null,
   showDesc: true,
   allCollapsed: false,
   collapsedClusters: new Set(),
-  scoreLang: 'ko',        // 'ko' | 'en' | 'both'
+  scoreLang: 'ko',
   showExternalInGraph: true,
   inspectorOpen: true,
+  draggingActionId: null,
 };
 
-const clusterMap = Object.fromEntries(DATA.clusters.map(c => [c.id, c]));
-const actions = DATA.actions;
-const actionOrder = DATA.actionOrder;
+// Restore draft from localStorage if exists
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) state.clusters = parsed;
+  }
+} catch (_) {}
+
+function saveDraft() {
+  try {
+    if (isDirty()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state.clusters));
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch (_) {}
+}
+
+function isDirty() {
+  return JSON.stringify(serializeForExport(state.clusters)) !== originalExportStr;
+}
+
+function pushUndo() {
+  state.undoStack.push(cloneClusters(state.clusters));
+  if (state.undoStack.length > 40) state.undoStack.shift();
+}
+
+function getClusterMap() {
+  return Object.fromEntries(state.clusters.map(c => [c.id, c]));
+}
+
+function getActionCluster(gid) {
+  return state.clusters.find(c => c.actions.includes(gid)) || null;
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function hasCrossClusterLink(gid) {
   const a = actions[gid];
   if (!a) return false;
+  const myC = getActionCluster(gid)?.id || null;
   const check = (otherId) => {
-    const o = actions[otherId];
-    return o && a.cluster_id !== o.cluster_id;
+    if (!actions[otherId]) return false;
+    const otherC = getActionCluster(otherId)?.id || null;
+    return myC !== otherC;
   };
   return a.related.some(check) || a.referenced_by.some(check);
 }
@@ -912,9 +1206,13 @@ function hasCrossClusterLink(gid) {
 function getCrossLinks(gid) {
   const a = actions[gid];
   if (!a) return [];
+  const myC = getActionCluster(gid)?.id || null;
   const set = new Set();
   for (const r of [...a.related, ...a.referenced_by]) {
-    if (actions[r] && actions[r].cluster_id !== a.cluster_id) set.add(r);
+    if (actions[r]) {
+      const otherC = getActionCluster(r)?.id || null;
+      if (myC !== otherC) set.add(r);
+    }
   }
   return [...set].sort((x, y) => actions[x].num - actions[y].num);
 }
@@ -932,46 +1230,154 @@ function getAllRelatedInScope(gid) {
 function matchesFilterAndQuery(gid) {
   const a = actions[gid];
   if (!a) return false;
-  if (state.filter === 'clustered' && !a.cluster_id) return false;
-  if (state.filter === 'standalone' && a.cluster_id) return false;
+  const c = getActionCluster(gid);
+  if (state.filter === 'clustered' && !c) return false;
+  if (state.filter === 'standalone' && c) return false;
   if (state.filter === 'cross' && !hasCrossClusterLink(gid)) return false;
 
   const q = state.query.trim().toLowerCase();
   if (!q) return true;
-  const c = a.cluster_id ? clusterMap[a.cluster_id] : null;
   const hay = [
-    a.id,
-    String(a.num),
-    a.name_ko,
-    a.name_en,
-    a.alias,
-    a.desc,
-    a.materials,
-    c ? c.id : '',
-    c ? c.ko : '',
-    c ? c.title : '',
-    c ? c.alias : '',
+    a.id, String(a.num), a.name_ko, a.name_en, a.alias, a.desc, a.materials,
+    c ? c.id : '', c ? c.ko : '', c ? c.title : '', c ? c.alias : '',
   ].join(' ').toLowerCase();
   return hay.includes(q);
 }
 
-function esc(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+// Mutations
+function moveActionToCluster(gid, targetClusterId) {
+  const current = getActionCluster(gid);
+  const currentId = current ? current.id : null;
+  if (currentId === targetClusterId) return;
+
+  pushUndo();
+  for (const c of state.clusters) {
+    c.actions = c.actions.filter(id => id !== gid);
+  }
+  if (targetClusterId) {
+    const target = state.clusters.find(c => c.id === targetClusterId);
+    if (target) {
+      target.actions.push(gid);
+      target.actions.sort((x, y) => actions[x].num - actions[y].num);
+      showToast(`${gid} → ${target.ko} 이동`);
+    }
+  } else {
+    showToast(`${gid} → 단독 항목으로 이동`);
+  }
+  afterMutate();
 }
 
-function updateCounts() {
+function createNewCluster() {
+  pushUndo();
+  let idx = state.clusters.length + 1;
+  let newId = `Cluster_Custom_${idx}`;
+  const existing = new Set(state.clusters.map(c => c.id));
+  while (existing.has(newId)) {
+    idx++;
+    newId = `Cluster_Custom_${idx}`;
+  }
+  const color = PALETTE[state.clusters.length % PALETTE.length];
+  state.clusters.push({
+    id: newId,
+    ko: `새 그룹 ${idx}`,
+    title: `Custom Group ${idx}`,
+    alias: `Custom Group ${idx}`,
+    desc: '새로 만든 동작 그룹 설명을 입력하세요.',
+    actions: [],
+    color,
+    order: state.clusters.length + 1,
+  });
+  state.selectedType = 'cluster';
+  state.selectedId = newId;
+  state.inspectorOpen = true;
+  syncInspectorToggle();
+  afterMutate();
+  showToast(`새 그룹(${newId}) 생성됨`);
+}
+
+function deleteCluster(cid) {
+  const c = state.clusters.find(x => x.id === cid);
+  if (!c) return;
+  if (c.actions.length > 0 && !confirm(`"${c.ko}" 그룹을 삭제할까요?\n포함된 ${c.actions.length}개 동작은 단독 항목으로 이동합니다.`)) {
+    return;
+  }
+  pushUndo();
+  state.clusters = state.clusters.filter(x => x.id !== cid);
+  if (state.selectedType === 'cluster' && state.selectedId === cid) {
+    state.selectedType = null;
+    state.selectedId = null;
+  }
+  afterMutate();
+  showToast(`그룹 삭제됨 (동작은 단독 항목으로 보존)`);
+}
+
+function updateClusterField(cid, patch) {
+  const c = state.clusters.find(x => x.id === cid);
+  if (!c) return;
+  if (patch.id && patch.id !== cid) {
+    const cleanId = patch.id.trim().replace(/\s+/g, '_');
+    if (!cleanId) return;
+    if (state.clusters.some(x => x.id === cleanId)) {
+      showToast('이미 존재하는 Cluster ID입니다.');
+      renderInspector();
+      return;
+    }
+    pushUndo();
+    c.id = cleanId;
+    if (state.selectedType === 'cluster' && state.selectedId === cid) {
+      state.selectedId = cleanId;
+    }
+  } else {
+    pushUndo();
+    Object.assign(c, patch);
+  }
+  afterMutate();
+}
+
+function undo() {
+  if (state.undoStack.length === 0) return;
+  state.clusters = state.undoStack.pop();
+  if (state.selectedType === 'cluster' && !state.clusters.some(c => c.id === state.selectedId)) {
+    state.selectedType = null;
+    state.selectedId = null;
+  }
+  afterMutate();
+  showToast('이전 상태로 되돌림');
+}
+
+function resetToOriginal() {
+  if (!confirm('수정 내용을 모두 취소하고 원본 config/action_group.json 상태로 되돌릴까요?')) return;
+  pushUndo();
+  state.clusters = cloneClusters(BASE_DATA.clusters);
+  if (state.selectedType === 'cluster' && !state.clusters.some(c => c.id === state.selectedId)) {
+    state.selectedType = null;
+    state.selectedId = null;
+  }
+  afterMutate();
+  showToast('원본 상태로 복원됨');
+}
+
+function afterMutate() {
+  saveDraft();
+  updateStatusUI();
+  renderMain();
+  renderInspector();
+}
+
+function updateStatusUI() {
   const all = actionOrder.length;
-  const clustered = actionOrder.filter(id => actions[id].cluster_id).length;
+  const clustered = actionOrder.filter(id => Boolean(getActionCluster(id))).length;
   const standalone = all - clustered;
   const cross = actionOrder.filter(hasCrossClusterLink).length;
   document.getElementById('cntAll').textContent = all;
   document.getElementById('cntClustered').textContent = clustered;
   document.getElementById('cntStandalone').textContent = standalone;
   document.getElementById('cntCross').textContent = cross;
+
+  const dirty = isDirty();
+  document.getElementById('dirtyBadge').classList.toggle('show', dirty);
+  document.getElementById('resetBtn').disabled = !dirty;
+  document.getElementById('undoBtn').disabled = state.undoStack.length === 0;
 }
 
 function selectAction(gid) {
@@ -1016,20 +1422,18 @@ function applyHoverHighlights(gid) {
 
 function renderActionRowHTML(gid, isStandalone = false) {
   const a = actions[gid];
-  const c = a.cluster_id ? clusterMap[a.cluster_id] : null;
-  const styleVar = c
-    ? `--c-color:${c.color};--c-bg:${c.bg};--c-dark-bg:${c.darkBg};`
-    : `--c-color:#64748b;--c-bg:#f1f5f9;--c-dark-bg:rgba(100,116,139,0.2);`;
+  const c = getActionCluster(gid);
+  const styleVar = `--c-color:${c ? c.color : '#64748b'};`;
   const isSel = state.selectedType === 'action' && state.selectedId === gid;
   const cross = getCrossLinks(gid);
   const crossBadge = cross.length
     ? `<span class="cross-tag" title="Bayley Related Item 교차 연결: ${cross.join(', ')}">↔ ${cross.map(x => x.replace('GM_', '')).join(',')}</span>`
     : '';
-
   const cls = isStandalone ? 'standalone-card' : 'action-row';
   return `
-    <div class="${cls} ${isSel ? 'selected' : ''}" data-action-id="${gid}" style="${styleVar}">
+    <div class="${cls} ${isSel ? 'selected' : ''}" draggable="true" data-action-id="${gid}" style="${styleVar}">
       <div class="action-top">
+        <span class="drag-grip" title="드래그하여 그룹 이동">⋮⋮</span>
         <span class="gm-id">${gid}</span>
         <span class="action-title" title="${esc(a.name_ko)} (${esc(a.name_en)})">${esc(a.name_ko)} <span class="en">(${esc(a.name_en)})</span></span>
         ${crossBadge}
@@ -1041,18 +1445,23 @@ function renderActionRowHTML(gid, isStandalone = false) {
 
 function renderBoardView(main) {
   const visibleIds = new Set(actionOrder.filter(matchesFilterAndQuery));
-  if (visibleIds.size === 0) {
+  const showEmptyClusters = !state.query.trim() && (state.filter === 'all' || state.filter === 'clustered');
+  const visibleClusters = state.clusters.filter(c =>
+    (c.actions.length === 0 && showEmptyClusters) || c.actions.some(id => visibleIds.has(id))
+  );
+  const standaloneIds = actionOrder.filter(id => !getActionCluster(id) && visibleIds.has(id));
+  const showStandaloneZone = state.filter !== 'clustered' && (standaloneIds.length > 0 || !state.query.trim());
+
+  if (visibleIds.size === 0 && visibleClusters.length === 0) {
     main.innerHTML = `<div class="empty-state">조건에 맞는 동작이 없습니다. 검색어나 필터를 초기화해 보세요.</div>`;
     return;
   }
 
   let html = '';
-  const visibleClusters = DATA.clusters.filter(c => c.actions.some(id => visibleIds.has(id)));
-
   if (visibleClusters.length > 0) {
     html += `
       <div class="section-head">
-        <div class="section-title">그룹 클러스터 (${visibleClusters.length}개 · 클릭하면 상세/비교 보기)</div>
+        <div class="section-title">그룹 클러스터 (${visibleClusters.length}개 · 항목 드래그로 이동 / 헤더 클릭으로 편집)</div>
       </div>
       <div class="cluster-grid">
     `;
@@ -1062,20 +1471,23 @@ function renderBoardView(main) {
       const isSel = state.selectedType === 'cluster' && state.selectedId === c.id;
       html += `
         <section class="cluster-card ${isCol ? 'collapsed' : ''} ${isSel ? 'selected' : ''}"
-                 style="--c-color:${c.color};--c-bg:${c.bg};--c-dark-bg:${c.darkBg};"
-                 data-cluster-card="${c.id}">
+                 style="--c-color:${c.color};"
+                 data-drop-cluster="${c.id}">
           <div class="cluster-head" data-cluster-id="${c.id}">
             <div>
               <div class="cluster-name-ko"><span class="cluster-dot"></span>${esc(c.ko)}</div>
               <div class="cluster-name-en">${esc(c.alias)} · ${esc(c.id)}</div>
             </div>
             <div class="cluster-badges">
-              <span class="count-badge">${members.length}</span>
+              <span class="count-badge">${c.actions.length}</span>
               <button class="collapse-btn" data-collapse="${c.id}" title="접기/펼치기">${isCol ? '▸' : '▾'}</button>
             </div>
           </div>
           <div class="cluster-body">
-            ${members.map(id => renderActionRowHTML(id, false)).join('')}
+            ${members.length
+              ? members.map(id => renderActionRowHTML(id, false)).join('')
+              : `<div class="cluster-empty-drop">여기로 동작을 드래그해서 추가하세요</div>`
+            }
           </div>
         </section>
       `;
@@ -1083,21 +1495,23 @@ function renderBoardView(main) {
     html += `</div>`;
   }
 
-  const standaloneIds = actionOrder.filter(id => !actions[id].cluster_id && visibleIds.has(id));
-  if (standaloneIds.length > 0) {
+  if (showStandaloneZone) {
     html += `
       <div class="section-head">
-        <div class="section-title">단독 항목 · 미그루핑 (${standaloneIds.length}개)</div>
+        <div class="section-title">단독 항목 · 미그루핑 (${standaloneIds.length}개 · 그룹에서 빼려면 여기로 드래그)</div>
       </div>
-      <div class="standalone-grid">
-        ${standaloneIds.map(id => renderActionRowHTML(id, true)).join('')}
+      <div class="standalone-zone" data-drop-standalone="1">
+        ${standaloneIds.length
+          ? `<div class="standalone-grid">${standaloneIds.map(id => renderActionRowHTML(id, true)).join('')}</div>`
+          : `<div class="cluster-empty-drop">단독 항목이 없습니다. 그룹에서 해제할 동작을 여기로 드래그하세요.</div>`
+        }
       </div>
     `;
   }
 
   main.innerHTML = html;
 
-  // Bind events
+  // Bind click, hover, and drag-and-drop
   main.querySelectorAll('[data-action-id]').forEach(el => {
     const gid = el.getAttribute('data-action-id');
     el.addEventListener('click', (e) => {
@@ -1106,10 +1520,57 @@ function renderBoardView(main) {
     });
     el.addEventListener('mouseenter', () => applyHoverHighlights(gid));
     el.addEventListener('mouseleave', () => applyHoverHighlights(null));
+    el.addEventListener('dragstart', (e) => {
+      state.draggingActionId = gid;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', gid);
+    });
+    el.addEventListener('dragend', () => {
+      state.draggingActionId = null;
+      el.classList.remove('dragging');
+      main.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+    });
   });
+
+  main.querySelectorAll('[data-drop-cluster]').forEach(card => {
+    const cid = card.getAttribute('data-drop-cluster');
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', (e) => {
+      if (!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const gid = e.dataTransfer.getData('text/plain') || state.draggingActionId;
+      if (gid && actions[gid]) moveActionToCluster(gid, cid);
+    });
+  });
+
+  const stZone = main.querySelector('[data-drop-standalone]');
+  if (stZone) {
+    stZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      stZone.classList.add('drag-over');
+    });
+    stZone.addEventListener('dragleave', (e) => {
+      if (!stZone.contains(e.relatedTarget)) stZone.classList.remove('drag-over');
+    });
+    stZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      stZone.classList.remove('drag-over');
+      const gid = e.dataTransfer.getData('text/plain') || state.draggingActionId;
+      if (gid && actions[gid]) moveActionToCluster(gid, null);
+    });
+  }
+
   main.querySelectorAll('[data-cluster-id]').forEach(el => {
-    const cid = el.getAttribute('data-cluster-id');
-    el.addEventListener('click', () => selectCluster(cid));
+    el.addEventListener('click', () => selectCluster(el.getAttribute('data-cluster-id')));
   });
   main.querySelectorAll('[data-collapse]').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1128,17 +1589,15 @@ function renderSequenceView(main) {
     main.innerHTML = `<div class="empty-state">조건에 맞는 동작이 없습니다.</div>`;
     return;
   }
-  const html = `
+  main.innerHTML = `
     <div class="section-head">
-      <div class="section-title">Bayley-4th 항목 번호순 (${visibleIds.length}개 · 발달 순서대로 그룹 분포 확인)</div>
+      <div class="section-title">Bayley-4th 항목 번호순 (${visibleIds.length}개 · 클릭 후 우측 패널에서 그룹 변경 가능)</div>
     </div>
     <div class="seq-list">
       ${visibleIds.map(gid => {
         const a = actions[gid];
-        const c = a.cluster_id ? clusterMap[a.cluster_id] : null;
-        const styleVar = c
-          ? `--c-color:${c.color};--c-bg:${c.bg};--c-dark-bg:${c.darkBg};`
-          : `--c-color:#94a3b8;--c-bg:#f1f5f9;--c-dark-bg:rgba(100,116,139,0.2);`;
+        const c = getActionCluster(gid);
+        const styleVar = `--c-color:${c ? c.color : '#94a3b8'};`;
         const isSel = state.selectedType === 'action' && state.selectedId === gid;
         const cross = getCrossLinks(gid);
         return `
@@ -1147,7 +1606,7 @@ function renderSequenceView(main) {
               <span class="gm-id">${gid}</span>
               <span class="action-title" title="${esc(a.name_ko)} (${esc(a.name_en)})">${esc(a.name_ko)} <span class="en">(${esc(a.name_en)})</span></span>
             </div>
-            <div class="action-desc">${esc(a.desc)}</div>
+            <div class="action-desc" style="padding-left:2px;">${esc(a.desc)}</div>
             <div class="seq-meta">
               <span class="mini-pill" style="${c ? `color:${c.color};border-color:${c.color}44;` : ''}">${c ? esc(c.ko) : '단독 항목'}</span>
               ${cross.length ? `<span class="cross-tag">교차 ↔ ${cross.join(', ')}</span>` : ''}
@@ -1157,7 +1616,6 @@ function renderSequenceView(main) {
       }).join('')}
     </div>
   `;
-  main.innerHTML = html;
   main.querySelectorAll('[data-action-id]').forEach(el => {
     const gid = el.getAttribute('data-action-id');
     el.addEventListener('click', () => selectAction(gid));
@@ -1168,81 +1626,90 @@ function renderSequenceView(main) {
 
 function renderGraphView(main) {
   const visibleIds = new Set(actionOrder.filter(matchesFilterAndQuery));
-  // Fixed clean layout for 7 clusters (2 rows: 4 top, 3 middle) + standalone band at bottom
   const W = 1040;
-  const H = 640;
+  const colsPerRow = state.clusters.length <= 3 ? Math.max(1, state.clusters.length) : (state.clusters.length === 4 ? 4 : 4);
+  const padX = 16, gapX = 14, gapY = 26;
 
-  const clusterBoxes = [
-    // Row 1 (4 clusters)
-    { id: 'Cluster_Standing_Stepping',           x: 16,  y: 18,  w: 242, h: 174 },
-    { id: 'Cluster_Sit_Quadruped_Pull_to_Stand', x: 274, y: 18,  w: 242, h: 132 },
-    { id: 'Cluster_Supported_Walking_Cruising',  x: 532, y: 18,  w: 242, h: 132 },
-    { id: 'Cluster_Walk_Forward',                x: 790, y: 18,  w: 234, h: 132 },
-    // Row 2 (3 clusters)
-    { id: 'Cluster_Walk_Backward',               x: 16,  y: 236, w: 318, h: 132 },
-    { id: 'Cluster_Jump_Series',                 x: 354, y: 236, w: 332, h: 174 },
-    { id: 'Cluster_Balance_Unsup',               x: 706, y: 236, w: 318, h: 132 },
-  ];
-
+  // Dynamic cluster box layout
   const nodePos = {};
-  let svgParts = [];
-
-  // Cluster background boxes & their member nodes
-  for (const box of clusterBoxes) {
-    const c = clusterMap[box.id];
-    if (!c) continue;
-    const isSelC = state.selectedType === 'cluster' && state.selectedId === c.id;
-    svgParts.push(`
-      <g class="g-cluster" data-g-cluster="${c.id}" style="cursor:pointer;">
-        <rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="10"
-              fill="${c.color}12" stroke="${c.color}" stroke-width="${isSelC ? 2.5 : 1.2}" stroke-opacity="${isSelC ? 1 : 0.5}" />
-        <text x="${box.x + 10}" y="${box.y + 18}" font-size="11.5" font-weight="700" fill="${c.color}">${esc(c.ko)}</text>
-        <text x="${box.x + box.w - 10}" y="${box.y + 18}" font-size="10" font-weight="600" text-anchor="end" fill="${c.color}" opacity="0.75">${c.actions.length}개</text>
-      </g>
-    `);
-    c.actions.forEach((gid, idx) => {
-      const nw = box.w - 20;
-      const nh = 34;
-      const nx = box.x + 10;
-      const ny = box.y + 30 + idx * 44;
-      nodePos[gid] = { x: nx, y: ny, w: nw, h: nh, cx: nx + nw / 2, cy: ny + nh / 2, color: c.color };
-    });
+  const svgParts = [];
+  let curY = 18;
+  const rows = [];
+  for (let i = 0; i < state.clusters.length; i += colsPerRow) {
+    rows.push(state.clusters.slice(i, i + colsPerRow));
   }
 
-  // External nodes (Item 20, Item 33) if toggled
-  const externalNodes = [
-    { id: 'GM_20', label: 'Item 20 (미포함)', x: 80,  y: 200, w: 112, h: 24 },
-    { id: 'GM_33', label: 'Item 33 (미포함)', x: 338, y: 162, w: 112, h: 24 },
-  ];
+  for (const row of rows) {
+    const cnt = row.length;
+    const boxW = (W - padX * 2 - gapX * (cnt - 1)) / cnt;
+    let maxH = 90;
+    const heights = row.map(c => Math.max(84, 38 + c.actions.length * 42));
+    maxH = Math.max(...heights);
+
+    row.forEach((c, idx) => {
+      const bx = padX + idx * (boxW + gapX);
+      const by = curY;
+      const bh = heights[idx];
+      const isSelC = state.selectedType === 'cluster' && state.selectedId === c.id;
+      const titleLabel = c.ko.length > 18 ? c.ko.slice(0, 17) + '…' : c.ko;
+      svgParts.push(`
+        <g class="g-cluster" data-g-cluster="${c.id}" style="cursor:pointer;">
+          <rect x="${bx}" y="${by}" width="${boxW}" height="${bh}" rx="10"
+                fill="${c.color}12" stroke="${c.color}" stroke-width="${isSelC ? 2.5 : 1.2}" stroke-opacity="${isSelC ? 1 : 0.55}" />
+          <text x="${bx + 10}" y="${by + 19}" font-size="11.5" font-weight="700" fill="${c.color}">${esc(titleLabel)}</text>
+          <text x="${bx + boxW - 10}" y="${by + 19}" font-size="10" font-weight="600" text-anchor="end" fill="${c.color}" opacity="0.8">${c.actions.length}개</text>
+        </g>
+      `);
+      c.actions.forEach((gid, mIdx) => {
+        const nw = boxW - 20;
+        const nh = 34;
+        const nx = bx + 10;
+        const ny = by + 30 + mIdx * 42;
+        nodePos[gid] = { x: nx, y: ny, w: nw, h: nh, cx: nx + nw / 2, cy: ny + nh / 2, color: c.color };
+      });
+    });
+    curY += maxH + gapY;
+  }
+
+  // External ghost nodes band (Item 20, Item 33)
+  const externalNodes = [];
   if (state.showExternalInGraph) {
+    externalNodes.push(
+      { id: 'GM_20', label: 'Item 20 (미포함)', x: 24,  y: curY - 12, w: 120, h: 24 },
+      { id: 'GM_33', label: 'Item 33 (미포함)', x: 158, y: curY - 12, w: 120, h: 24 }
+    );
     for (const ex of externalNodes) {
       nodePos[ex.id] = { x: ex.x, y: ex.y, w: ex.w, h: ex.h, cx: ex.x + ex.w / 2, cy: ex.y + ex.h / 2, external: true };
     }
+    curY += 26;
   }
 
   // Standalone band
-  const standalones = actionOrder.filter(id => !actions[id].cluster_id);
-  const stY = 442;
+  const standalones = actionOrder.filter(id => !getActionCluster(id));
+  const stCols = 3;
+  const stRows = Math.max(1, Math.ceil(standalones.length / stCols));
+  const stH = 38 + stRows * 46;
   svgParts.push(`
-    <rect x="16" y="${stY}" width="${W - 32}" height="184" rx="10"
+    <rect x="${padX}" y="${curY}" width="${W - padX * 2}" height="${stH}" rx="10"
           fill="var(--surface-2)" stroke="var(--border-strong)" stroke-dasharray="4 4" stroke-width="1" />
-    <text x="28" y="${stY + 19}" font-size="11.5" font-weight="700" fill="var(--text-3)">단독 항목 · 미그루핑 (${standalones.length}개)</text>
+    <text x="${padX + 12}" y="${curY + 19}" font-size="11.5" font-weight="700" fill="var(--text-3)">단독 항목 · 미그루핑 (${standalones.length}개)</text>
   `);
-  const cols = 3;
-  const colW = (W - 64 - (cols - 1) * 12) / cols;
+  const stColW = (W - padX * 2 - 28 - (stCols - 1) * 12) / stCols;
   standalones.forEach((gid, idx) => {
-    const col = idx % cols;
-    const row = Math.floor(idx / cols);
-    const nx = 30 + col * (colW + 12);
-    const ny = stY + 32 + row * 48;
-    nodePos[gid] = { x: nx, y: ny, w: colW, h: 36, cx: nx + colW / 2, cy: ny + 18, color: '#64748b' };
+    const col = idx % stCols;
+    const row = Math.floor(idx / stCols);
+    const nx = padX + 14 + col * (stColW + 12);
+    const ny = curY + 30 + row * 46;
+    nodePos[gid] = { x: nx, y: ny, w: stColW, h: 36, cx: nx + stColW / 2, cy: ny + 18, color: '#64748b' };
   });
+  const H = curY + stH + 18;
 
-  // Collect edges from bayley_4th_motion.md Related Item
+  // Edges
   const edgeKeys = new Set();
   const edges = [];
   for (const gid of actionOrder) {
     const a = actions[gid];
+    const myC = getActionCluster(gid)?.id || null;
     for (const rid of a.related) {
       if (!nodePos[gid] || !nodePos[rid]) continue;
       const isExt = !actions[rid];
@@ -1250,24 +1717,24 @@ function renderGraphView(main) {
       const key = isExt ? `${gid}->${rid}` : [gid, rid].sort().join('--');
       if (edgeKeys.has(key)) continue;
       edgeKeys.add(key);
-      const isCross = !isExt && a.cluster_id !== actions[rid].cluster_id;
+      const otherC = isExt ? null : (getActionCluster(rid)?.id || null);
+      const isCross = !isExt && myC !== otherC;
       edges.push({ from: gid, to: rid, isCross, isExt });
     }
   }
 
-  // Draw edges
   const edgeSvg = edges.map(e => {
     const p1 = nodePos[e.from];
     const p2 = nodePos[e.to];
     let d;
     if (e.isCross) {
       const mx = (p1.cx + p2.cx) / 2;
-      const my = (p1.cy + p2.cy) / 2 - 42;
+      const my = (p1.cy + p2.cy) / 2 - 38;
       d = `M ${p1.cx} ${p1.cy} Q ${mx} ${my} ${p2.cx} ${p2.cy}`;
     } else if (e.isExt) {
       d = `M ${p1.cx} ${p1.cy} L ${p2.cx} ${p2.cy}`;
     } else {
-      const offset = 28;
+      const offset = 24;
       d = `M ${p1.x + p1.w} ${p1.cy} C ${p1.x + p1.w + offset} ${p1.cy}, ${p2.x + p2.w + offset} ${p2.cy}, ${p2.x + p2.w} ${p2.cy}`;
     }
     const stroke = e.isCross ? '#f59e0b' : (e.isExt ? '#94a3b8' : (p1.color || '#94a3b8'));
@@ -1277,25 +1744,22 @@ function renderGraphView(main) {
     return `<path class="g-edge" data-from="${e.from}" data-to="${e.to}" d="${d}" stroke="${stroke}" stroke-width="${sw}" ${dash ? `stroke-dasharray="${dash}"` : ''} opacity="${op}" />`;
   }).join('');
 
-  // Draw external ghost nodes
-  let extSvg = '';
-  if (state.showExternalInGraph) {
-    extSvg = externalNodes.map(ex => `
-      <g class="g-node" data-g-node="${ex.id}">
-        <rect x="${ex.x}" y="${ex.y}" width="${ex.w}" height="${ex.h}" rx="12"
-              fill="var(--surface)" stroke="#94a3b8" stroke-dasharray="3 2" stroke-width="1.2" />
-        <text x="${ex.x + ex.w / 2}" y="${ex.y + 15.5}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--text-3)">${ex.label}</text>
-      </g>
-    `).join('');
-  }
+  const extSvg = externalNodes.map(ex => `
+    <g class="g-node" data-g-node="${ex.id}">
+      <rect x="${ex.x}" y="${ex.y}" width="${ex.w}" height="${ex.h}" rx="12"
+            fill="var(--surface)" stroke="#94a3b8" stroke-dasharray="3 2" stroke-width="1.2" />
+      <text x="${ex.x + ex.w / 2}" y="${ex.y + 15.5}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--text-3)">${ex.label}</text>
+    </g>
+  `).join('');
 
-  // Draw action nodes
   const nodeSvg = actionOrder.map(gid => {
     const a = actions[gid];
     const p = nodePos[gid];
+    if (!p) return '';
     const isSel = state.selectedType === 'action' && state.selectedId === gid;
     const dim = !visibleIds.has(gid) ? 0.22 : 1;
-    const labelKo = a.name_ko.length > 14 ? a.name_ko.slice(0, 13) + '…' : a.name_ko;
+    const maxChars = Math.max(8, Math.floor((p.w - 64) / 11));
+    const labelKo = a.name_ko.length > maxChars ? a.name_ko.slice(0, maxChars - 1) + '…' : a.name_ko;
     return `
       <g class="g-node" data-g-node="${gid}" opacity="${dim}">
         <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="7"
@@ -1312,7 +1776,7 @@ function renderGraphView(main) {
       <div class="graph-toolbar">
         <div class="legend">
           <span class="legend-item"><span class="legend-line" style="background:#4f46e5;"></span>같은 그룹 내 Related</span>
-          <span class="legend-item"><span class="legend-line" style="border-top:2px dashed #f59e0b;background:none;"></span><strong>다른 그룹 교차 Related</strong> (GM_31/32 → GM_36, GM_40)</span>
+          <span class="legend-item"><span class="legend-line" style="border-top:2px dashed #f59e0b;background:none;"></span><strong>다른 그룹 교차 Related</strong></span>
           <span class="legend-item"><span class="legend-line" style="border-top:2px dotted #94a3b8;background:none;"></span>config 미포함 참조 (Item 20, 33)</span>
         </div>
         <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;">
@@ -1335,21 +1799,16 @@ function renderGraphView(main) {
     state.showExternalInGraph = e.target.checked;
     renderGraphView(main);
   });
-
   main.querySelectorAll('[data-g-cluster]').forEach(el => {
     el.addEventListener('click', () => selectCluster(el.getAttribute('data-g-cluster')));
   });
 
   const allNodeEls = main.querySelectorAll('[data-g-node]');
   const allEdgeEls = main.querySelectorAll('.g-edge');
-
   allNodeEls.forEach(el => {
     const gid = el.getAttribute('data-g-node');
     if (actions[gid]) {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectAction(gid);
-      });
+      el.addEventListener('click', (e) => { e.stopPropagation(); selectAction(gid); });
     }
     el.addEventListener('mouseenter', () => {
       const neighbors = new Set([gid]);
@@ -1357,8 +1816,7 @@ function renderGraphView(main) {
         const f = ed.getAttribute('data-from');
         const t = ed.getAttribute('data-to');
         if (f === gid || t === gid) {
-          neighbors.add(f);
-          neighbors.add(t);
+          neighbors.add(f); neighbors.add(t);
           ed.setAttribute('opacity', '1');
           ed.setAttribute('stroke-width', '3');
         } else {
@@ -1366,8 +1824,7 @@ function renderGraphView(main) {
         }
       });
       allNodeEls.forEach(n => {
-        const nid = n.getAttribute('data-g-node');
-        n.setAttribute('opacity', neighbors.has(nid) ? '1' : '0.22');
+        n.setAttribute('opacity', neighbors.has(n.getAttribute('data-g-node')) ? '1' : '0.22');
       });
     });
     el.addEventListener('mouseleave', () => {
@@ -1394,30 +1851,38 @@ function renderMain() {
 function renderInspector() {
   const head = document.getElementById('inspHeadTitle');
   const body = document.getElementById('inspBody');
+  const clusterMap = getClusterMap();
 
   if (!state.selectedType || !state.selectedId) {
-    head.textContent = '📊 그루핑 요약 · 항목을 클릭해 상세 보기';
+    const crossList = actionOrder.filter(hasCrossClusterLink);
+    head.textContent = '📊 그루핑 요약 · 항목/그룹을 클릭해 편집';
     body.innerHTML = `
       <div class="stat-grid">
         <div class="stat-box"><div class="stat-val">${actionOrder.length}</div><div class="stat-lbl">전체 동작</div></div>
-        <div class="stat-box"><div class="stat-val">${DATA.clusters.length}</div><div class="stat-lbl">클러스터</div></div>
-        <div class="stat-box"><div class="stat-val">${actionOrder.filter(id => !actions[id].cluster_id).length}</div><div class="stat-lbl">단독 항목</div></div>
+        <div class="stat-box"><div class="stat-val">${state.clusters.length}</div><div class="stat-lbl">클러스터</div></div>
+        <div class="stat-box"><div class="stat-val">${actionOrder.filter(id => !getActionCluster(id)).length}</div><div class="stat-lbl">단독 항목</div></div>
       </div>
 
       <div class="insight-box">
-        <div><strong>🔎 교차 연결 포인트 (Bayley-4th Related Item)</strong></div>
-        <div>• <strong>GM_31, GM_32</strong> (지지 보행·크루징)은 Bayley 매뉴얼에서 <strong>GM_36</strong>(독립 전진), <strong>GM_40</strong>(후진 보행)과 Related Item으로 연결되어 있습니다.</div>
-        <div>• <strong>Item 20</strong>(GM_28·34 참조)과 <strong>Item 33</strong>(GM_27·30 참조)은 현재 config 25개 목록에 포함되지 않은 외부 항목입니다.</div>
+        <div><strong>🔎 교차 연결 현황 (${crossList.length}개 항목)</strong></div>
+        ${crossList.length
+          ? `<div>현재 서로 다른 그룹(또는 단독)에 나뉘어 있는 Bayley Related Item: <strong>${crossList.join(', ')}</strong></div>`
+          : `<div>현재 config 내 모든 Bayley Related Item이 같은 그룹에 묶여 있습니다.</div>`
+        }
+        <div>• <strong>Item 20</strong>(GM_28·34 참조)과 <strong>Item 33</strong>(GM_27·30 참조)은 config 25개 목록 외 항목입니다.</div>
       </div>
 
       <div class="insp-section">
-        <div class="insp-sec-head"><span>클러스터 바로가기</span></div>
+        <div class="insp-sec-head">
+          <span>클러스터 목록 (${state.clusters.length})</span>
+          <button class="icon-btn" id="inspNewClusterBtn" style="padding:2px 7px;font-size:10.5px;">+ 새 그룹</button>
+        </div>
         <div style="display:flex;flex-direction:column;gap:5px;">
-          ${DATA.clusters.map(c => `
+          ${state.clusters.map(c => `
             <div class="cmp-item" data-jump-cluster="${c.id}" style="border-left:3px solid ${c.color};">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
                 <strong style="font-size:12px;">${esc(c.ko)}</strong>
-                <span class="count-badge" style="color:${c.color};">${c.actions.map(x => x.replace('GM_','')).join(', ')}</span>
+                <span class="count-badge" style="color:${c.color};">${c.actions.length ? c.actions.map(x => x.replace('GM_','')).join(', ') : '비어있음'}</span>
               </div>
               <div style="font-size:11px;color:var(--text-3);">${esc(c.desc)}</div>
             </div>
@@ -1425,6 +1890,7 @@ function renderInspector() {
         </div>
       </div>
     `;
+    document.getElementById('inspNewClusterBtn')?.addEventListener('click', createNewCluster);
     body.querySelectorAll('[data-jump-cluster]').forEach(el => {
       el.addEventListener('click', () => selectCluster(el.getAttribute('data-jump-cluster')));
     });
@@ -1433,29 +1899,69 @@ function renderInspector() {
 
   if (state.selectedType === 'cluster') {
     const c = clusterMap[state.selectedId];
-    head.innerHTML = `<span class="cluster-dot" style="background:${c.color};"></span> 클러스터 상세 · ${esc(c.id)}`;
+    if (!c) { clearSelection(); return; }
+    head.innerHTML = `<span class="cluster-dot" style="background:${c.color};"></span> 클러스터 편집 · ${esc(c.id)}`;
+    const addable = actionOrder.filter(id => !c.actions.includes(id));
+
     body.innerHTML = `
-      <div class="insp-hero">
-        <div class="insp-badges">
-          <span class="cluster-chip" style="background:${c.bg};color:${c.color};border-color:${c.color}44;">${c.actions.length}개 동작</span>
-          <span class="mini-pill">${esc(c.alias)}</span>
+      <div class="field-box">
+        <div class="field-row">
+          <label>표시 색상</label>
+          <div class="color-palette">
+            ${PALETTE.map(col => `<button class="swatch ${c.color === col ? 'active' : ''}" data-pick-color="${col}" style="background:${col};" title="${col}"></button>`).join('')}
+          </div>
         </div>
-        <div class="insp-title-ko">${esc(c.ko)}</div>
-        <div class="insp-title-en">${esc(c.title)}</div>
+        <div class="field-row">
+          <label>한글 그룹명 (화면 표시용)</label>
+          <input type="text" id="cfKo" value="${esc(c.ko)}" />
+        </div>
+        <div class="field-row">
+          <label>Cluster ID (JSON 키)</label>
+          <input type="text" id="cfId" value="${esc(c.id)}" style="font-family:var(--mono);" />
+        </div>
+        <div class="field-row">
+          <label>Title (영문 제목 · JSON title)</label>
+          <input type="text" id="cfTitle" value="${esc(c.title)}" />
+        </div>
+        <div class="field-row">
+          <label>Alias (짧은 영문명 · JSON alias)</label>
+          <input type="text" id="cfAlias" value="${esc(c.alias)}" />
+        </div>
+        <div class="field-row">
+          <label>설명 (JSON desc)</label>
+          <textarea id="cfDesc">${esc(c.desc)}</textarea>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:2px;">
+          <button class="icon-btn danger" id="deleteClusterBtn">🗑 그룹 삭제</button>
+          <button class="icon-btn primary" id="applyClusterMetaBtn">변경 적용</button>
+        </div>
       </div>
 
-      <div class="insp-summary">${esc(c.desc)}</div>
+      <div class="insp-section">
+        <div class="insp-sec-head"><span>이 그룹에 동작 추가</span></div>
+        <div style="display:flex;gap:6px;">
+          <select id="addMemberSelect" style="flex:1;padding:5px 7px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12px;">
+            <option value="">-- 추가할 동작 선택 --</option>
+            ${addable.map(gid => {
+              const cur = getActionCluster(gid);
+              return `<option value="${gid}">${gid} ${esc(actions[gid].name_ko)} ${cur ? `[현재: ${esc(cur.ko)}]` : '[단독]'}</option>`;
+            }).join('')}
+          </select>
+          <button class="icon-btn" id="addMemberBtn">추가</button>
+        </div>
+      </div>
 
       <div class="insp-section">
-        <div class="insp-sec-head"><span>포함 동작 & 2점 기준 비교 (클릭하여 상세 보기)</span></div>
-        ${c.actions.map(gid => {
+        <div class="insp-sec-head"><span>포함 동작 & 2점 기준 비교 (${c.actions.length})</span></div>
+        ${c.actions.length ? c.actions.map(gid => {
           const a = actions[gid];
           const s2 = a.scores_ko['2'] || a.scores_en['2'] || '';
           return `
             <div class="cmp-item" data-jump-action="${gid}">
               <div class="action-top">
-                <span class="gm-id" style="--c-color:${c.color};--c-bg:${c.bg};--c-dark-bg:${c.darkBg};">${gid}</span>
+                <span class="gm-id" style="--c-color:${c.color};">${gid}</span>
                 <span class="action-title">${esc(a.name_ko)} <span class="en">(${esc(a.name_en)})</span></span>
+                <button class="rm-member-btn" data-rm-member="${gid}" title="그룹에서 빼기 (단독 항목으로)">✕</button>
               </div>
               <div style="font-size:11.5px;color:var(--text-2);">${esc(a.desc)}</div>
               <div class="cmp-2pt">
@@ -1464,9 +1970,39 @@ function renderInspector() {
               </div>
             </div>
           `;
-        }).join('')}
+        }).join('') : `<div style="font-size:12px;color:var(--text-3);padding:6px 0;">아직 포함된 동작이 없습니다. 위에서 추가하거나 보드에서 드래그해 넣으세요.</div>`}
       </div>
     `;
+
+    body.querySelectorAll('[data-pick-color]').forEach(btn => {
+      btn.addEventListener('click', () => updateClusterField(c.id, { color: btn.getAttribute('data-pick-color') }));
+    });
+    document.getElementById('applyClusterMetaBtn').addEventListener('click', () => {
+      const newId = document.getElementById('cfId').value.trim();
+      const patch = {
+        ko: document.getElementById('cfKo').value.trim() || c.ko,
+        title: document.getElementById('cfTitle').value.trim(),
+        alias: document.getElementById('cfAlias').value.trim(),
+        desc: document.getElementById('cfDesc').value.trim(),
+      };
+      if (newId && newId !== c.id) {
+        updateClusterField(c.id, { ...patch, id: newId });
+      } else {
+        updateClusterField(c.id, patch);
+      }
+      showToast('클러스터 정보 저장됨');
+    });
+    document.getElementById('deleteClusterBtn').addEventListener('click', () => deleteCluster(c.id));
+    document.getElementById('addMemberBtn').addEventListener('click', () => {
+      const gid = document.getElementById('addMemberSelect').value;
+      if (gid) moveActionToCluster(gid, c.id);
+    });
+    body.querySelectorAll('[data-rm-member]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveActionToCluster(btn.getAttribute('data-rm-member'), null);
+      });
+    });
     body.querySelectorAll('[data-jump-action]').forEach(el => {
       el.addEventListener('click', () => selectAction(el.getAttribute('data-jump-action')));
     });
@@ -1475,8 +2011,8 @@ function renderInspector() {
 
   // Action detail inspector
   const a = actions[state.selectedId];
-  const c = a.cluster_id ? clusterMap[a.cluster_id] : null;
-  head.innerHTML = `<span style="font-family:var(--mono);font-weight:800;color:${c ? c.color : 'var(--text)'};">${a.id}</span> 동작 상세 정보`;
+  const c = getActionCluster(a.id);
+  head.innerHTML = `<span style="font-family:var(--mono);font-weight:800;color:${c ? c.color : 'var(--text)'};">${a.id}</span> 동작 상세 · 그룹 변경`;
 
   const allRel = [...new Set([...a.related, ...a.referenced_by])];
   const scoreKeys = ['2', '1', '0'].filter(k => a.scores_en[k] || a.scores_ko[k]);
@@ -1484,9 +2020,9 @@ function renderInspector() {
   body.innerHTML = `
     <div class="insp-hero">
       <div class="insp-badges">
-        <span class="gm-id" style="${c ? `--c-color:${c.color};--c-bg:${c.bg};--c-dark-bg:${c.darkBg};` : ''}">${a.id}</span>
+        <span class="gm-id" style="--c-color:${c ? c.color : '#64748b'};">${a.id}</span>
         ${c
-          ? `<span class="cluster-chip" data-jump-cluster="${c.id}" style="background:${c.bg};color:${c.color};border-color:${c.color}44;">● ${esc(c.ko)}</span>`
+          ? `<span class="cluster-chip" data-jump-cluster="${c.id}" style="background:${c.color}18;color:${c.color};border-color:${c.color}44;">● ${esc(c.ko)}</span>`
           : `<span class="mini-pill">단독 항목 (미그루핑)</span>`
         }
       </div>
@@ -1495,6 +2031,16 @@ function renderInspector() {
     </div>
 
     <div class="insp-summary">${esc(a.desc)}</div>
+
+    <div class="field-box">
+      <div class="field-row">
+        <label>소속 그룹 변경 (즉시 반영)</label>
+        <select id="actionClusterSelect">
+          <option value="" ${!c ? 'selected' : ''}>단독 항목 (미그루핑)</option>
+          ${state.clusters.map(cl => `<option value="${cl.id}" ${c && c.id === cl.id ? 'selected' : ''}>${esc(cl.ko)} (${esc(cl.id)})</option>`).join('')}
+        </select>
+      </div>
+    </div>
 
     <div class="insp-section">
       <div class="insp-sec-head">
@@ -1546,7 +2092,8 @@ function renderInspector() {
             if (!target) {
               return `<span class="jump-chip external"><span style="font-family:var(--mono);">${rid}</span><span class="tag-micro tag-ext">미포함</span></span>`;
             }
-            const same = a.cluster_id && target.cluster_id === a.cluster_id;
+            const tC = getActionCluster(rid);
+            const same = c && tC && c.id === tC.id;
             return `
               <button class="jump-chip" data-jump-action="${rid}">
                 <span style="font-family:var(--mono);font-weight:700;">${rid}</span>
@@ -1565,6 +2112,9 @@ function renderInspector() {
     </details>
   `;
 
+  document.getElementById('actionClusterSelect').addEventListener('change', (e) => {
+    moveActionToCluster(a.id, e.target.value || null);
+  });
   body.querySelectorAll('[data-jump-action]').forEach(el => {
     el.addEventListener('click', () => selectAction(el.getAttribute('data-jump-action')));
   });
@@ -1579,7 +2129,68 @@ function renderInspector() {
   });
 }
 
-// Header controls
+// Download & Import JSON
+function buildExportJSONText() {
+  return JSON.stringify(serializeForExport(state.clusters), null, 2);
+}
+
+function downloadActionGroupJSON() {
+  const text = buildExportJSONText();
+  const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'action_group.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('action_group.json 다운로드 완료!');
+}
+
+function importActionGroupJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ''));
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.clusters !== 'object') {
+        throw new Error('clusters 객체가 없습니다.');
+      }
+      pushUndo();
+      const baseMetaById = Object.fromEntries(BASE_DATA.clusters.map(c => [c.id, c]));
+      const nextClusters = [];
+      let i = 0;
+      for (const [cid, cinfo] of Object.entries(parsed.clusters)) {
+        if (!cinfo || !Array.isArray(cinfo.actions)) continue;
+        const known = baseMetaById[cid];
+        const validMembers = cinfo.actions
+          .filter(id => Boolean(actions[id]))
+          .sort((x, y) => actions[x].num - actions[y].num);
+        nextClusters.push({
+          id: cid,
+          ko: known ? known.ko : (cinfo.alias || cinfo.title || cid),
+          title: cinfo.title || cid,
+          alias: cinfo.alias || cid,
+          desc: cinfo.desc || '',
+          actions: validMembers,
+          color: known ? known.color : PALETTE[i % PALETTE.length],
+          order: i + 1,
+        });
+        i++;
+      }
+      state.clusters = nextClusters;
+      state.selectedType = null;
+      state.selectedId = null;
+      afterMutate();
+      showToast(`${file.name} 불러오기 완료 (${nextClusters.length}개 그룹)`);
+    } catch (err) {
+      alert('JSON 불러오기 실패: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// Header & toolbar bindings
 document.querySelectorAll('#viewTabs button').forEach(btn => {
   btn.addEventListener('click', () => {
     state.view = btn.getAttribute('data-view');
@@ -1621,11 +2232,11 @@ document.getElementById('toggleDescBtn').addEventListener('click', (e) => {
 document.getElementById('toggleCollapseBtn').addEventListener('click', (e) => {
   state.allCollapsed = !state.allCollapsed;
   if (state.allCollapsed) {
-    DATA.clusters.forEach(c => state.collapsedClusters.add(c.id));
-    e.currentTarget.textContent = '모두 펼치기';
+    state.clusters.forEach(c => state.collapsedClusters.add(c.id));
+    e.currentTarget.textContent = '펼치기';
   } else {
     state.collapsedClusters.clear();
-    e.currentTarget.textContent = '모두 접기';
+    e.currentTarget.textContent = '접기';
   }
   renderMain();
 });
@@ -1645,25 +2256,64 @@ document.getElementById('themeBtn').addEventListener('click', (e) => {
   e.currentTarget.textContent = isDark ? '🌙' : '☀️';
 });
 
+document.getElementById('newClusterBtn').addEventListener('click', createNewCluster);
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('resetBtn').addEventListener('click', resetToOriginal);
+document.getElementById('downloadBtn').addEventListener('click', downloadActionGroupJSON);
+
+const importInput = document.getElementById('importFileInput');
+document.getElementById('importBtn').addEventListener('click', () => importInput.click());
+importInput.addEventListener('change', () => {
+  if (importInput.files?.[0]) importActionGroupJSON(importInput.files[0]);
+  importInput.value = '';
+});
+
+// JSON preview modal
+const jsonModal = document.getElementById('jsonModal');
+document.getElementById('previewJsonBtn').addEventListener('click', () => {
+  document.getElementById('jsonPreviewPre').textContent = buildExportJSONText();
+  jsonModal.classList.add('open');
+});
+document.getElementById('closeModalBtn').addEventListener('click', () => jsonModal.classList.remove('open'));
+jsonModal.addEventListener('click', (e) => { if (e.target === jsonModal) jsonModal.classList.remove('open'); });
+document.getElementById('copyJsonBtn').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(buildExportJSONText());
+    showToast('JSON이 클립보드에 복사되었습니다!');
+  } catch (_) {
+    showToast('복사 권한이 없어 직접 선택해 복사해 주세요.');
+  }
+});
+document.getElementById('modalDownloadBtn').addEventListener('click', () => {
+  downloadActionGroupJSON();
+  jsonModal.classList.remove('open');
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  if (e.key === '/' && document.activeElement !== searchInput) {
+  const tag = document.activeElement?.tagName;
+  const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) {
+    e.preventDefault();
+    undo();
+    return;
+  }
+  if (e.key === '/' && !typing) {
     e.preventDefault();
     searchInput.focus();
   } else if (e.key === 'Escape') {
-    if (document.activeElement === searchInput) {
+    if (jsonModal.classList.contains('open')) {
+      jsonModal.classList.remove('open');
+    } else if (document.activeElement === searchInput) {
       searchInput.blur();
-    } else if (state.selectedId) {
+    } else if (!typing && state.selectedId) {
       clearSelection();
-    } else if (state.inspectorOpen) {
-      state.inspectorOpen = false;
-      syncInspectorToggle();
     }
   }
 });
 
 // Init
-updateCounts();
+updateStatusUI();
 renderMain();
 renderInspector();
 syncInspectorToggle();
